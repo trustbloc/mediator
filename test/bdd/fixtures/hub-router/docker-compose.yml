@@ -1,0 +1,35 @@
+#
+# Copyright SecureKey Technologies Inc. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+version: '2'
+
+services:
+
+  hubrouter.example.com:
+    container_name: hubrouter.example.com
+    image: ${HUB_ROUTER_IMAGE}:latest
+    environment:
+      - HUB_ROUTER_HOST_URL=0.0.0.0:${HUB_ROUTER_PORT}
+      - HUB_ROUTER_TLS_CACERTS=/etc/tls/ec-cacert.pem
+      - HUB_ROUTER_TLS_SYSTEMCERTPOOL=true
+      - HUB_ROUTER_TLS_SERVE_CERT=/etc/tls/ec-pubCert.pem
+      - HUB_ROUTER_TLS_SERVE_KEY=/etc/tls/ec-key.pem
+      - HUB_ROUTER_DIDCOMM_INBOUND_HOST=0.0.0.0:${HUB_ROUTER_DIDCOMM_PORT}
+      - HUB_ROUTER_DIDCOMM_INBOUND_HOST_EXTERNAL=http://hubrouter.example.com:${HUB_ROUTER_DIDCOMM_PORT}
+      - HUB_ROUTER_DSN_PERSISTENT=mem://bddtests       # TODO choose storage: https://github.com/trustbloc/hub-router/issues/2
+      - HUB_ROUTER_DSN_TRANSIENT=mem://bddtests
+    ports:
+      - ${HUB_ROUTER_PORT}:${HUB_ROUTER_PORT}
+      - ${HUB_ROUTER_DIDCOMM_PORT}:${HUB_ROUTER_DIDCOMM_PORT}
+    entrypoint: ""
+    command: /bin/sh -c "hub-router start"
+    volumes:
+      - ../keys/tls:/etc/tls
+    networks:
+      - bdd_test
+
+networks:
+  bdd_test:
+    driver: bridge
