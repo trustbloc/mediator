@@ -5,7 +5,7 @@
 #
 
 # Release Parameters
-BASE_VERSION=0.1.4
+BASE_VERSION=0.1.5
 IS_RELEASE=false
 
 # Project Parameters
