@@ -421,6 +421,8 @@ func createAriesAgent(parameters *hubRouterParameters, tlsConfig *tls.Config) (*
 	inboundTransportOpt := defaults.WithInboundHTTPAddr(
 		parameters.didCommParameters.inboundHostInternal,
 		parameters.didCommParameters.inboundHostExternal,
+		"",
+		"",
 	)
 
 	opts = append(opts, inboundTransportOpt)

@@ -8,7 +8,7 @@ DOCKER_IMAGE_NAME ?= trustbloc/hub-router/hub-router
 
 # Tool commands (overridable)
 ALPINE_VER ?= 3.12
-GO_VER ?= 1.14
+GO_VER ?= 1.15
 
 .PHONY: all
 all: checks unit-test bdd-test

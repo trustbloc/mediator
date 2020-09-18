@@ -4,10 +4,10 @@
 
 module github.com/trustbloc/hub-router
 
-go 1.14
+go 1.15
 
 require (
-	github.com/hyperledger/aries-framework-go v0.1.4-0.20200805204032-391252ea5b9f
+	github.com/hyperledger/aries-framework-go v0.1.5-0.20200917154156-6311b0ee33e5
 	github.com/stretchr/testify v1.6.1
-	github.com/trustbloc/edge-core v0.1.4-0.20200728153544-0323395713e0
+	github.com/trustbloc/edge-core v0.1.5-0.20200916124536-c32454a16108
 )

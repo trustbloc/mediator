@@ -10,7 +10,7 @@ pr:
   - master
 
 variables:
-  GO_VERSION: 1.14
+  GO_VERSION: 1.15
   GOPATH: $(Agent.BuildDirectory)/go
 
 jobs:
@@ -42,7 +42,7 @@ jobs:
     pool:
       vmImage: ubuntu-18.04
     strategy:
-      parallel: 3
+      parallel: 1
     timeoutInMinutes: 30
     steps:
       - template: azp-dependencies.yml
