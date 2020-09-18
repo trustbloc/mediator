@@ -44,7 +44,7 @@ const (
 	didCommInboundHostFlagUsage = "Inbound Host Name:Port. This is used internally to start the didcomm server." +
 		" Alternatively, this can be set with the following environment variable: " + didCommInboundHostEnvKey
 
-	// inbound host external url flag
+	// inbound host external url flag.
 	didCommInboundHostExternalFlagName  = "didcomm-inbound-host-external"
 	didCommInboundHostExternalEnvKey    = "HUB_ROUTER_DIDCOMM_INBOUND_HOST_EXTERNAL"
 	didCommInboundHostExternalFlagUsage = "Inbound Host External Name:Port." +
@@ -94,7 +94,7 @@ const (
 		" Alternatively, this can be set with the following environment variable: " + datasourceTransientEnvKey
 	datasourceTransientEnvKey = "HUB_ROUTER_DSN_TRANSIENT"
 
-	// db path
+	// db path.
 	didCommDBPathFlagName  = "didcomm-db-path"
 	didCommDBPathEnvKey    = "HUB_ROUTER_DIDCOMM_DB_PATH"
 	didCommDBPathFlagUsage = "Path to database." +
@@ -365,7 +365,7 @@ func startHubRouter(params *hubRouterParameters, srv server) error {
 
 	router := mux.NewRouter()
 
-	ariesCtx, err := createAriesAgent(params, &tls.Config{RootCAs: rootCAs})
+	ariesCtx, err := createAriesAgent(params, &tls.Config{RootCAs: rootCAs, MinVersion: tls.VersionTLS12})
 	if err != nil {
 		return err
 	}
@@ -490,6 +490,7 @@ func initEdgeStore(dbURL, prefix string) (storage.Provider, error) {
 		func() error {
 			var openErr error
 			store, openErr = providerFunc(dsn, prefix)
+
 			return openErr
 		},
 		backoff.WithMaxRetries(backoff.NewConstantBackOff(sleep), numRetries),
