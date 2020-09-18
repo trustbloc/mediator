@@ -80,7 +80,8 @@ jobs:
           echo $DOCKER_PASSWORD | docker login docker.pkg.github.com --username $DOCKER_USER --password-stdin
 
           make docker
-          docker tag ${HUB_ROUTER_PKG}:latest ${HUB_ROUTER_PKG}:${HUB_ROUTER_TAG}
+          docker tag docker.pkg.github.com/trustbloc/hub-router/hub-router:latest ${HUB_ROUTER_PKG}:${HUB_ROUTER_TAG}
+          docker push ${HUB_ROUTER_PKG}:${HUB_ROUTER_TAG}
         env:
           DOCKER_USER: $(DOCKER_USER)
           DOCKER_PASSWORD: $(DOCKER_PASSWORD)
