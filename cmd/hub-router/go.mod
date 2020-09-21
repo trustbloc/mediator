@@ -9,7 +9,7 @@ go 1.15
 require (
 	github.com/cenkalti/backoff/v4 v4.0.2
 	github.com/gorilla/mux v1.7.4
-	github.com/hyperledger/aries-framework-go v0.1.5-0.20200917154156-6311b0ee33e5
+	github.com/hyperledger/aries-framework-go v0.1.5-0.20200918143342-09b3e884d06f
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.6.1
