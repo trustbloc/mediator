@@ -8,6 +8,7 @@ package startcmd
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -18,6 +19,7 @@ import (
 	"github.com/gorilla/mux"
 	arieslog "github.com/hyperledger/aries-framework-go/pkg/common/log"
 	arieshttp "github.com/hyperledger/aries-framework-go/pkg/didcomm/transport/http"
+	ariesws "github.com/hyperledger/aries-framework-go/pkg/didcomm/transport/ws"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/defaults"
 	ariesctx "github.com/hyperledger/aries-framework-go/pkg/framework/context"
@@ -40,18 +42,33 @@ const (
 		" Alternatively, this can be set with the following environment variable: " + hostURLEnvKey
 	hostURLEnvKey = "HUB_ROUTER_HOST_URL"
 
-	didCommInboundHostFlagName  = "didcomm-inbound-host"
-	didCommInboundHostEnvKey    = "HUB_ROUTER_DIDCOMM_INBOUND_HOST"
-	didCommInboundHostFlagUsage = "Inbound Host Name:Port. This is used internally to start the didcomm server." +
-		" Alternatively, this can be set with the following environment variable: " + didCommInboundHostEnvKey
+	// didcomm http host internal url.
+	didCommHTTPHostFlagName  = "didcomm-http-host"
+	didCommHTTPHostEnvKey    = "HUB_ROUTER_DIDCOMM_HTTP_HOST"
+	didCommHTTPHostFlagUsage = "DIDComm HTTP Host Name:Port. This is used internally to start the didcomm server." +
+		" Alternatively, this can be set with the following environment variable: " + didCommHTTPHostEnvKey
 
-	// inbound host external url flag.
-	didCommInboundHostExternalFlagName  = "didcomm-inbound-host-external"
-	didCommInboundHostExternalEnvKey    = "HUB_ROUTER_DIDCOMM_INBOUND_HOST_EXTERNAL"
-	didCommInboundHostExternalFlagUsage = "Inbound Host External Name:Port." +
+	// didcomm http host external url.
+	didCommHTTPHostExternalFlagName  = "didcomm-http-host-external"
+	didCommHTTPHostExternalEnvKey    = "HUB_ROUTER_DIDCOMM_HTTP_HOST_EXTERNAL"
+	didCommHTTPHostExternalFlagUsage = "DIDComm HTTP External Name." +
 		" This is the URL for the inbound server as seen externally." +
 		" If not provided, then the internal inbound host will be used here." +
-		" Alternatively, this can be set with the following environment variable: " + didCommInboundHostExternalEnvKey
+		" Alternatively, this can be set with the following environment variable: " + didCommHTTPHostExternalEnvKey
+
+	// didcomm websocket host internal url.
+	didCommWSHostFlagName  = "didcomm-ws-host"
+	didCommWSHostEnvKey    = "HUB_ROUTER_DIDCOMM_WS_HOST"
+	didCommWSHostFlagUsage = "DIDComm WebSocket Host Name:Port. This is used internally to start the didcomm server." +
+		" Alternatively, this can be set with the following environment variable: " + didCommWSHostEnvKey
+
+	// didcomm websocket host external url.
+	didCommWSHostExternalFlagName  = "didcomm-ws-host-external"
+	didCommWSHostExternalEnvKey    = "HUB_ROUTER_DIDCOMM_WS_HOST_EXTERNAL"
+	didCommWSHostExternalFlagUsage = "DIDComm WebSocket External Name." +
+		" This is the URL for the inbound server as seen externally." +
+		" If not provided, then the internal inbound host will be used here." +
+		" Alternatively, this can be set with the following environment variable: " + didCommWSHostExternalEnvKey
 
 	tlsSystemCertPoolFlagName  = "tls-systemcertpool"
 	tlsSystemCertPoolFlagUsage = "Use system certificate pool." +
@@ -128,8 +145,10 @@ type tlsParameters struct {
 }
 
 type didCommParameters struct {
-	inboundHostInternal string
-	inboundHostExternal string
+	httpHostInternal string
+	httpHostExternal string
+	wsHostInternal   string
+	wsHostExternal   string
 }
 
 type datasourceParams struct {
@@ -146,11 +165,18 @@ type hubRouterParameters struct {
 }
 
 type server interface {
+	ListenAndServe(host string, router http.Handler) error
+
 	ListenAndServeTLS(host, certFile, keyFile string, router http.Handler) error
 }
 
 // HTTPServer represents an actual HTTP server implementation.
 type HTTPServer struct{}
+
+// ListenAndServe starts the server using the standard Go HTTP implementation.
+func (s *HTTPServer) ListenAndServe(host string, router http.Handler) error {
+	return http.ListenAndServe(host, router)
+}
 
 // ListenAndServeTLS starts the server using the standard Go HTTPS implementation.
 func (s *HTTPServer) ListenAndServeTLS(host, certFile, keyFile string, router http.Handler) error {
@@ -193,8 +219,10 @@ func createFlags(startCmd *cobra.Command) {
 	startCmd.Flags().StringP(didCommDBPathFlagName, "", "", didCommDBPathFlagUsage)
 
 	// didcomm
-	startCmd.Flags().StringP(didCommInboundHostFlagName, "", "", didCommInboundHostFlagUsage)
-	startCmd.Flags().StringP(didCommInboundHostExternalFlagName, "", "", didCommInboundHostExternalFlagUsage)
+	startCmd.Flags().StringP(didCommHTTPHostFlagName, "", "", didCommHTTPHostFlagUsage)
+	startCmd.Flags().StringP(didCommHTTPHostExternalFlagName, "", "", didCommHTTPHostExternalFlagUsage)
+	startCmd.Flags().StringP(didCommWSHostFlagName, "", "", didCommWSHostFlagUsage)
+	startCmd.Flags().StringP(didCommWSHostExternalFlagName, "", "", didCommWSHostExternalFlagUsage)
 
 	startCmd.Flags().StringP(logLevelFlagName, "", "INFO", logLevelFlagUsage)
 }
@@ -307,21 +335,35 @@ func getDatasourceParams(cmd *cobra.Command) (*datasourceParams, error) {
 }
 
 func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) {
-	inboundHostInternal, err := cmdutils.GetUserSetVarFromString(cmd, didCommInboundHostFlagName,
-		didCommInboundHostEnvKey, false)
+	httpHostInternal, err := cmdutils.GetUserSetVarFromString(cmd, didCommHTTPHostFlagName,
+		didCommHTTPHostEnvKey, false)
 	if err != nil {
 		return nil, err
 	}
 
-	inboundHostExternal, err := cmdutils.GetUserSetVarFromString(cmd, didCommInboundHostExternalFlagName,
-		didCommInboundHostExternalEnvKey, true)
+	httpHostExternal, err := cmdutils.GetUserSetVarFromString(cmd, didCommHTTPHostExternalFlagName,
+		didCommHTTPHostExternalEnvKey, true)
+	if err != nil {
+		return nil, err
+	}
+
+	wsHostInternal, err := cmdutils.GetUserSetVarFromString(cmd, didCommWSHostFlagName,
+		didCommWSHostEnvKey, false)
+	if err != nil {
+		return nil, err
+	}
+
+	wsHostExternal, err := cmdutils.GetUserSetVarFromString(cmd, didCommWSHostExternalFlagName,
+		didCommWSHostExternalEnvKey, true)
 	if err != nil {
 		return nil, err
 	}
 
 	return &didCommParameters{
-		inboundHostInternal: inboundHostInternal,
-		inboundHostExternal: inboundHostExternal,
+		httpHostInternal: httpHostInternal,
+		httpHostExternal: httpHostExternal,
+		wsHostInternal:   wsHostInternal,
+		wsHostExternal:   wsHostExternal,
 	}, nil
 }
 
@@ -357,12 +399,17 @@ func setAriesFrameworkLogLevel(logLevel string) error {
 }
 
 func startHubRouter(params *hubRouterParameters, srv server) error {
+	switch {
+	case params.tlsParams.serveCertPath != "" && params.tlsParams.serveKeyPath == "":
+		return errors.New("cert path and key path are mandatory : missing key path")
+	case params.tlsParams.serveCertPath == "" && params.tlsParams.serveKeyPath != "":
+		return errors.New("cert path and key path are mandatory : missing cert path")
+	}
+
 	rootCAs, err := tlsutils.GetCertPool(params.tlsParams.systemCertPool, params.tlsParams.caCerts)
 	if err != nil {
 		return err
 	}
-
-	logger.Debugf("root ca's %v", rootCAs)
 
 	router := mux.NewRouter()
 
@@ -376,7 +423,13 @@ func startHubRouter(params *hubRouterParameters, srv server) error {
 		return fmt.Errorf("failed to add handlers: %w", err)
 	}
 
-	logger.Infof("starting hub-router server on host %s", params.hostURL)
+	if params.tlsParams.serveCertPath == "" && params.tlsParams.serveKeyPath == "" {
+		logger.Infof("starting hub-router server on host:%s", params.hostURL)
+
+		return srv.ListenAndServe(params.hostURL, router)
+	}
+
+	logger.Infof("starting hub-router server on tls host %s", params.hostURL)
 
 	return srv.ListenAndServeTLS(
 		params.hostURL,
@@ -419,21 +472,30 @@ func createAriesAgent(parameters *hubRouterParameters, tlsConfig *tls.Config) (*
 		opts = append(opts, defaults.WithStorePath(parameters.datasourceParams.didcommDBPath))
 	}
 
-	inboundTransportOpt := defaults.WithInboundHTTPAddr(
-		parameters.didCommParameters.inboundHostInternal,
-		parameters.didCommParameters.inboundHostExternal,
-		"",
-		"",
+	inboundHTTPTransportOpt := defaults.WithInboundHTTPAddr(
+		parameters.didCommParameters.httpHostInternal,
+		parameters.didCommParameters.httpHostExternal,
+		parameters.tlsParams.serveCertPath,
+		parameters.tlsParams.serveKeyPath,
 	)
 
-	opts = append(opts, inboundTransportOpt)
+	inboundWSTransportOpt := defaults.WithInboundWSAddr(
+		parameters.didCommParameters.wsHostInternal,
+		parameters.didCommParameters.wsHostExternal,
+		parameters.tlsParams.serveCertPath,
+		parameters.tlsParams.serveKeyPath,
+	)
 
-	outbound, err := arieshttp.NewOutbound(arieshttp.WithOutboundTLSConfig(tlsConfig))
+	opts = append(opts, inboundHTTPTransportOpt, inboundWSTransportOpt)
+
+	outboundHTTP, err := arieshttp.NewOutbound(arieshttp.WithOutboundTLSConfig(tlsConfig))
 	if err != nil {
 		return nil, fmt.Errorf("aries-framework - failed to create outbound tranpsort opts : %w", err)
 	}
 
-	opts = append(opts, aries.WithOutboundTransports(outbound))
+	outboundWS := ariesws.NewOutbound()
+
+	opts = append(opts, aries.WithOutboundTransports(outboundHTTP, outboundWS))
 
 	framework, err := aries.New(opts...)
 	if err != nil {
