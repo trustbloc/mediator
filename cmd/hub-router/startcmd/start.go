@@ -28,6 +28,7 @@ import (
 	cmdutils "github.com/trustbloc/edge-core/pkg/utils/cmd"
 	tlsutils "github.com/trustbloc/edge-core/pkg/utils/tls"
 
+	routeraries "github.com/trustbloc/hub-router/pkg/aries"
 	"github.com/trustbloc/hub-router/pkg/restapi/operation"
 )
 
@@ -385,7 +386,7 @@ func startHubRouter(params *hubRouterParameters, srv server) error {
 	)
 }
 
-func addHandlers(params *hubRouterParameters, ariesCtx operation.Aries, router *mux.Router) error {
+func addHandlers(params *hubRouterParameters, ariesCtx routeraries.Ctx, router *mux.Router) error {
 	store, tStore, err := initAllEdgeStores(params.datasourceParams)
 	if err != nil {
 		return err
