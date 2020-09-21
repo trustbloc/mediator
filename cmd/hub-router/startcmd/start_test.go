@@ -20,6 +20,9 @@ import (
 
 type mockServer struct{}
 
+func (m *mockServer) ListenAndServe(host string, router http.Handler) error {
+	return nil
+}
 func (m *mockServer) ListenAndServeTLS(host, certFile, keyFile string, router http.Handler) error {
 	return nil
 }
@@ -37,7 +40,8 @@ func TestGetStartCmd(t *testing.T) {
 
 		args := []string{
 			"--" + hostURLFlagName, "localhost:8080",
-			"--" + didCommInboundHostFlagName, randomURL(t),
+			"--" + didCommHTTPHostFlagName, randomURL(t),
+			"--" + didCommWSHostFlagName, randomURL(t),
 			"--" + datasourcePersistentFlagName, "mem://tests",
 			"--" + datasourceTransientFlagName, "mem://tests",
 			"--" + didCommDBPathFlagName, tmpDir(t),
@@ -96,7 +100,7 @@ func TestGetStartCmd(t *testing.T) {
 
 		args := []string{
 			"--" + hostURLFlagName, "localhost:8080",
-			"--" + didCommInboundHostFlagName, randomURL(t),
+			"--" + didCommHTTPHostFlagName, randomURL(t),
 			"--" + datasourceTransientFlagName, "mem://tests",
 		}
 		startCmd.SetArgs(args)
@@ -112,7 +116,7 @@ func TestGetStartCmd(t *testing.T) {
 
 		args := []string{
 			"--" + hostURLFlagName, "localhost:8080",
-			"--" + didCommInboundHostFlagName, randomURL(t),
+			"--" + didCommHTTPHostFlagName, randomURL(t),
 			"--" + datasourcePersistentFlagName, "mem://tests",
 		}
 		startCmd.SetArgs(args)
@@ -128,7 +132,8 @@ func TestGetStartCmd(t *testing.T) {
 
 		args := []string{
 			"--" + hostURLFlagName, "localhost:8080",
-			"--" + didCommInboundHostFlagName, randomURL(t),
+			"--" + didCommHTTPHostFlagName, randomURL(t),
+			"--" + didCommWSHostFlagName, randomURL(t),
 			"--" + datasourcePersistentFlagName, "UNSUPPORTED://",
 			"--" + datasourceTransientFlagName, "mem://tests",
 		}
@@ -144,7 +149,8 @@ func TestGetStartCmd(t *testing.T) {
 
 		args := []string{
 			"--" + hostURLFlagName, "localhost:8080",
-			"--" + didCommInboundHostFlagName, randomURL(t),
+			"--" + didCommHTTPHostFlagName, randomURL(t),
+			"--" + didCommWSHostFlagName, randomURL(t),
 			"--" + datasourcePersistentFlagName, "malformed",
 			"--" + datasourceTransientFlagName, "mem://tests",
 			"--" + didCommDBPathFlagName, tmpDir(t),
@@ -169,9 +175,32 @@ func TestGetStartCmd(t *testing.T) {
 		err := startCmd.Execute()
 		require.Error(t, err)
 		require.Equal(t,
-			"Neither didcomm-inbound-host (command line flag) nor HUB_ROUTER_DIDCOMM_INBOUND_HOST "+
+			"Neither didcomm-http-host (command line flag) nor HUB_ROUTER_DIDCOMM_HTTP_HOST "+
 				"(environment variable) have been set.",
 			err.Error())
+	})
+}
+
+func TestStartHubRouter(t *testing.T) {
+	t.Run("missing tls configs", func(t *testing.T) {
+		tlsParams := &tlsParameters{
+			serveKeyPath: "/test",
+		}
+
+		params := &hubRouterParameters{
+			tlsParams: tlsParams,
+		}
+
+		err := startHubRouter(params, nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "cert path and key path are mandatory : missing cert path")
+
+		tlsParams.serveKeyPath = ""
+		tlsParams.serveCertPath = "/test"
+
+		err = startHubRouter(params, nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "cert path and key path are mandatory : missing key path")
 	})
 }
 
