@@ -20,8 +20,9 @@ services:
       - HUB_ROUTER_DIDCOMM_HTTP_HOST_EXTERNAL=http://hub-router.example.com:${HUB_ROUTER_DIDCOMM_HTTP_PORT}
       - HUB_ROUTER_DIDCOMM_WS_HOST=0.0.0.0:${HUB_ROUTER_DIDCOMM_WS_PORT}
       - HUB_ROUTER_DIDCOMM_WS_HOST_EXTERNAL=ws://hub-router.example.com:${HUB_ROUTER_DIDCOMM_WS_PORT}
-      - HUB_ROUTER_DSN_PERSISTENT=mem://bddtests       # TODO choose storage: https://github.com/trustbloc/hub-router/issues/2
-      - HUB_ROUTER_DSN_TRANSIENT=mem://bddtests
+      - HUB_ROUTER_DSN_PERSISTENT=mysql://hubrouter:hubrouter-secret-pw@tcp(mysql:3306)/
+      - HUB_ROUTER_DSN_TRANSIENT=mysql://hubrouter:hubrouter-secret-pw@tcp(mysql:3306)/
+      - HUB_ROUTER_DSN_TIMEOUT=45
     ports:
       - ${HUB_ROUTER_PORT}:${HUB_ROUTER_PORT}
       - ${HUB_ROUTER_DIDCOMM_HTTP_PORT}:${HUB_ROUTER_DIDCOMM_HTTP_PORT}
@@ -30,6 +31,22 @@ services:
     command: /bin/sh -c "hub-router start"
     volumes:
       - ../keys/tls:/etc/tls
+    depends_on:
+      - mysql
+    networks:
+      - bdd_test
+
+  mysql:
+    container_name: mysql
+    image: mysql:${MYSQL_IMAGE_TAG}
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+    logging:
+      driver: "none"
+    volumes:
+      - ./mysql-config:/docker-entrypoint-initdb.d
     networks:
       - bdd_test
 
