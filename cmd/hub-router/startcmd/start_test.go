@@ -8,7 +8,6 @@ package startcmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"testing"
@@ -44,7 +43,6 @@ func TestGetStartCmd(t *testing.T) {
 			"--" + didCommWSHostFlagName, randomURL(t),
 			"--" + datasourcePersistentFlagName, "mem://tests",
 			"--" + datasourceTransientFlagName, "mem://tests",
-			"--" + didCommDBPathFlagName, tmpDir(t),
 		}
 		startCmd.SetArgs(args)
 
@@ -153,7 +151,6 @@ func TestGetStartCmd(t *testing.T) {
 			"--" + didCommWSHostFlagName, randomURL(t),
 			"--" + datasourcePersistentFlagName, "malformed",
 			"--" + datasourceTransientFlagName, "mem://tests",
-			"--" + didCommDBPathFlagName, tmpDir(t),
 		}
 		startCmd.SetArgs(args)
 
@@ -178,6 +175,24 @@ func TestGetStartCmd(t *testing.T) {
 			"Neither didcomm-http-host (command line flag) nor HUB_ROUTER_DIDCOMM_HTTP_HOST "+
 				"(environment variable) have been set.",
 			err.Error())
+	})
+
+	t.Run("test adapter mode - store errors", func(t *testing.T) {
+		parameters := &hubRouterParameters{
+			datasourceParams: &datasourceParams{},
+		}
+
+		err := addHandlers(parameters, nil, nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "init persistent storage provider with url : invalid dbURL")
+
+		_, err = initEdgeStore("invaldidb://test", "", 10)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unsupported storage driver: invaldidb")
+
+		_, err = initAriesStore("invaldidb://test", "", 10)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unsupported storage driver: invaldidb")
 	})
 }
 
@@ -222,16 +237,4 @@ func randomURL(t *testing.T) string {
 	require.NoError(t, err)
 
 	return fmt.Sprintf("localhost:%d", p)
-}
-
-func tmpDir(t *testing.T) string {
-	path, err := ioutil.TempDir("", "db")
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		delErr := os.RemoveAll(path)
-		require.NoError(t, delErr)
-	})
-
-	return path
 }
