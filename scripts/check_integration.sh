@@ -7,7 +7,7 @@
 set -e
 
 declare -a tests=(
-   "healthcheck"
+   "all"
 )
 
 PWD=`pwd`
