@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
+	didexdsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/didexchange"
 	"github.com/trustbloc/edge-core/pkg/log"
 	"github.com/trustbloc/edge-core/pkg/storage"
 
@@ -67,6 +68,8 @@ func New(config *Config) (*Operation, error) {
 		didExchange: didExchangeClient,
 	}
 
+	go o.didCommActionListener(actionCh)
+
 	return o, nil
 }
 
@@ -101,4 +104,29 @@ func (o *Operation) generateInvitation(rw http.ResponseWriter, _ *http.Request) 
 	}
 
 	httputil.WriteResponseWithLog(rw, invitation, invitationPath, logger)
+}
+
+func (o *Operation) didCommActionListener(ch <-chan service.DIDCommAction) {
+	for msg := range ch {
+		var err error
+
+		var args interface{}
+
+		switch msg.Message.Type() {
+		case didexdsvc.RequestMsgType:
+			args = nil
+		default:
+			err = fmt.Errorf("unsupported message type : %s", msg.Message.Type())
+		}
+
+		if err != nil {
+			logger.Errorf("msgType=[%s] id=[%s] errMsg=[%s]", msg.Message.Type(), msg.Message.ID(), err.Error())
+
+			msg.Stop(fmt.Errorf("handle %s : %w", msg.Message.Type(), err))
+		} else {
+			logger.Infof("msgType=[%s] id=[%s] msg=[%s]", msg.Message.Type(), msg.Message.ID(), "success")
+
+			msg.Continue(args)
+		}
+	}
 }
