@@ -14,6 +14,8 @@ and the [Pickup](https://github.com/hyperledger/aries-rfcs/blob/master/features/
 
 Refer [documentation](docs/README.md) for api details. 
 
+<Test>
+
 ## Contributing
 Thank you for your interest in contributing. Please see our
 [community contribution guidelines](https://github.com/trustbloc/community/blob/master/CONTRIBUTING.md) for more information.
