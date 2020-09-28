@@ -10,6 +10,8 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/aries-framework-go/pkg/client/didexchange"
+	"github.com/hyperledger/aries-framework-go/pkg/client/mediator"
+	"github.com/hyperledger/aries-framework-go/pkg/client/outofband"
 	ariescrypto "github.com/hyperledger/aries-framework-go/pkg/crypto"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 	vdriapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdri"
@@ -28,10 +30,29 @@ type Ctx interface {
 	Crypto() ariescrypto.Crypto
 }
 
+// OutOfBand client.
+type OutOfBand interface {
+	CreateInvitation(protocols []string, opts ...outofband.MessageOption) (*outofband.Invitation, error)
+}
+
 // DIDExchange client.
 type DIDExchange interface {
-	CreateInvitation(label string) (*didexchange.Invitation, error)
 	RegisterActionEvent(chan<- service.DIDCommAction) error
+}
+
+// Mediator client.
+type Mediator interface {
+	RegisterActionEvent(chan<- service.DIDCommAction) error
+}
+
+// CreateOutofbandClient util function to create oob client.
+func CreateOutofbandClient(ariesCtx outofband.Provider) (*outofband.Client, error) {
+	oobClient, err := outofband.New(ariesCtx)
+	if err != nil {
+		return nil, fmt.Errorf("create out-of-band client : %w", err)
+	}
+
+	return oobClient, err
 }
 
 // CreateDIDExchangeClient util function to create did exchange client and registers for action event.
@@ -47,4 +68,19 @@ func CreateDIDExchangeClient(ctx Ctx, actionCh chan service.DIDCommAction) (DIDE
 	}
 
 	return didExClient, nil
+}
+
+// CreateMediatorClient util function to create mediator client and registers for action event.
+func CreateMediatorClient(ctx Ctx, actionCh chan service.DIDCommAction) (Mediator, error) {
+	mediatorClient, err := mediator.New(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("create mediator client : %w", err)
+	}
+
+	err = mediatorClient.RegisterActionEvent(actionCh)
+	if err != nil {
+		return nil, fmt.Errorf("register mediator action event : %w", err)
+	}
+
+	return mediatorClient, nil
 }
