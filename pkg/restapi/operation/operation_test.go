@@ -14,14 +14,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/aries-framework-go/pkg/client/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 	didexdsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/didexchange"
 	mockprovider "github.com/hyperledger/aries-framework-go/pkg/mock/provider"
 	mockstore "github.com/hyperledger/aries-framework-go/pkg/mock/storage"
 	"github.com/stretchr/testify/require"
 
-	mockdidex "github.com/trustbloc/hub-router/pkg/internal/mock/didexchange"
+	mockoutofband "github.com/trustbloc/hub-router/pkg/internal/mock/outofband"
 )
 
 func TestNew(t *testing.T) {
@@ -65,20 +64,20 @@ func TestGenerateInvitationHandler(t *testing.T) {
 		o.generateInvitation(w, nil)
 		require.Equal(t, http.StatusOK, w.Code)
 
-		var invitation didexchange.Invitation
-		err = json.Unmarshal(w.Body.Bytes(), &invitation)
+		var result *DIDCommInvitationResp
+		err = json.Unmarshal(w.Body.Bytes(), &result)
 		require.NoError(t, err)
 
-		require.NotEmpty(t, invitation.ID)
-		require.Equal(t, invitation.Label, "hub-router")
-		require.Equal(t, invitation.Type, "https://didcomm.org/didexchange/1.0/invitation")
+		require.NotEmpty(t, result.Invitation.ID)
+		require.Equal(t, result.Invitation.Label, "hub-router")
+		require.Equal(t, result.Invitation.Type, "https://didcomm.org/oob-invitation/1.0/invitation")
 	})
 
 	t.Run("error", func(t *testing.T) {
 		o, err := New(config())
 		require.NoError(t, err)
 
-		o.didExchange = &mockdidex.MockClient{CreateInvitationErr: errors.New("invitation error")}
+		o.oob = &mockoutofband.MockClient{CreateInvitationErr: errors.New("invitation error")}
 
 		w := httptest.NewRecorder()
 		o.generateInvitation(w, nil)

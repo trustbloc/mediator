@@ -11,8 +11,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hyperledger/aries-framework-go/pkg/client/outofband"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 	didexdsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/didexchange"
+	mediatordsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/mediator"
 	"github.com/trustbloc/edge-core/pkg/log"
 	"github.com/trustbloc/edge-core/pkg/storage"
 
@@ -51,21 +53,35 @@ type Config struct {
 // Operation implements hub-router operations.
 type Operation struct {
 	storage     *Storage
+	oob         aries.OutOfBand
 	didExchange aries.DIDExchange
+	mediator    aries.Mediator
 }
 
 // New returns a new Operation.
 func New(config *Config) (*Operation, error) {
 	actionCh := make(chan service.DIDCommAction, 1)
 
+	oobClient, err := aries.CreateOutofbandClient(config.Aries)
+	if err != nil {
+		return nil, fmt.Errorf("didexchange client: %w", err)
+	}
+
 	didExchangeClient, err := aries.CreateDIDExchangeClient(config.Aries, actionCh)
+	if err != nil {
+		return nil, fmt.Errorf("didexchange client: %w", err)
+	}
+
+	mediatorClient, err := aries.CreateMediatorClient(config.Aries, actionCh)
 	if err != nil {
 		return nil, fmt.Errorf("didexchange client: %w", err)
 	}
 
 	o := &Operation{
 		storage:     config.Storage,
+		oob:         oobClient,
 		didExchange: didExchangeClient,
+		mediator:    mediatorClient,
 	}
 
 	go o.didCommActionListener(actionCh)
@@ -95,7 +111,7 @@ func (o *Operation) healthCheckHandler(rw http.ResponseWriter, _ *http.Request) 
 
 func (o *Operation) generateInvitation(rw http.ResponseWriter, _ *http.Request) {
 	// TODO configure hub-router label
-	invitation, err := o.didExchange.CreateInvitation("hub-router")
+	invitation, err := o.oob.CreateInvitation(nil, outofband.WithLabel("hub-router"))
 	if err != nil {
 		httputil.WriteErrorResponseWithLog(rw, http.StatusInternalServerError,
 			fmt.Sprintf("failed to create router invitation - err=%s", err.Error()), invitationPath, logger)
@@ -103,7 +119,9 @@ func (o *Operation) generateInvitation(rw http.ResponseWriter, _ *http.Request) 
 		return
 	}
 
-	httputil.WriteResponseWithLog(rw, invitation, invitationPath, logger)
+	httputil.WriteResponseWithLog(rw, &DIDCommInvitationResp{
+		Invitation: invitation,
+	}, invitationPath, logger)
 }
 
 func (o *Operation) didCommActionListener(ch <-chan service.DIDCommAction) {
@@ -114,6 +132,8 @@ func (o *Operation) didCommActionListener(ch <-chan service.DIDCommAction) {
 
 		switch msg.Message.Type() {
 		case didexdsvc.RequestMsgType:
+			args = nil
+		case mediatordsvc.RequestMsgType:
 			args = nil
 		default:
 			err = fmt.Errorf("unsupported message type : %s", msg.Message.Type())

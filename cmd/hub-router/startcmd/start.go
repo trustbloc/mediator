@@ -26,6 +26,7 @@ import (
 	ariesstorage "github.com/hyperledger/aries-framework-go/pkg/storage"
 	ariesmem "github.com/hyperledger/aries-framework-go/pkg/storage/mem"
 	ariesmysql "github.com/hyperledger/aries-framework-go/pkg/storage/mysql"
+	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 	"github.com/trustbloc/edge-core/pkg/log"
 	"github.com/trustbloc/edge-core/pkg/storage"
@@ -458,10 +459,12 @@ func startHubRouter(params *hubRouterParameters, srv server) error {
 		return fmt.Errorf("failed to add handlers: %w", err)
 	}
 
+	handler := cors.Default().Handler(router)
+
 	if params.tlsParams.serveCertPath == "" && params.tlsParams.serveKeyPath == "" {
 		logger.Infof("starting hub-router server on host:%s", params.hostURL)
 
-		return srv.ListenAndServe(params.hostURL, router)
+		return srv.ListenAndServe(params.hostURL, handler)
 	}
 
 	logger.Infof("starting hub-router server on tls host %s", params.hostURL)
@@ -470,7 +473,7 @@ func startHubRouter(params *hubRouterParameters, srv server) error {
 		params.hostURL,
 		params.tlsParams.serveCertPath,
 		params.tlsParams.serveKeyPath,
-		router,
+		handler,
 	)
 }
 

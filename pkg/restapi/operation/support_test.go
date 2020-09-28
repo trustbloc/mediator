@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/mediator"
+	outofbandsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/outofband"
 	mockcrypto "github.com/hyperledger/aries-framework-go/pkg/mock/crypto"
 	mocksvc "github.com/hyperledger/aries-framework-go/pkg/mock/didcomm/protocol/didexchange"
 	mockroute "github.com/hyperledger/aries-framework-go/pkg/mock/didcomm/protocol/mediator"
@@ -21,6 +22,7 @@ import (
 	"github.com/trustbloc/edge-core/pkg/storage/memstore"
 
 	"github.com/trustbloc/hub-router/pkg/aries"
+	mockoutofband "github.com/trustbloc/hub-router/pkg/internal/mock/outofband"
 )
 
 func getAriesCtx() aries.Ctx {
@@ -28,6 +30,7 @@ func getAriesCtx() aries.Ctx {
 		ProtocolStateStorageProviderValue: mockstore.NewMockStoreProvider(),
 		StorageProviderValue:              mockstore.NewMockStoreProvider(),
 		ServiceMap: map[string]interface{}{
+			outofbandsvc.Name:       &mockoutofband.MockService{},
 			didexchange.DIDExchange: &mocksvc.MockDIDExchangeSvc{},
 			mediator.Coordination:   &mockroute.MockMediatorSvc{},
 		},
