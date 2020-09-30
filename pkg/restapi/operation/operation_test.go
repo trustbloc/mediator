@@ -16,6 +16,10 @@ import (
 
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 	didexdsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/didexchange"
+	mediatordsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/mediator"
+	outofbandsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/outofband"
+	mocksvc "github.com/hyperledger/aries-framework-go/pkg/mock/didcomm/protocol/didexchange"
+	mockroute "github.com/hyperledger/aries-framework-go/pkg/mock/didcomm/protocol/mediator"
 	mockprovider "github.com/hyperledger/aries-framework-go/pkg/mock/provider"
 	mockstore "github.com/hyperledger/aries-framework-go/pkg/mock/storage"
 	"github.com/stretchr/testify/require"
@@ -35,6 +39,36 @@ func TestNew(t *testing.T) {
 		config := config()
 		config.Aries = &mockprovider.Provider{
 			StorageProviderValue: mockstore.NewMockStoreProvider(),
+		}
+
+		o, err := New(config)
+		require.Nil(t, o)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "out-of-band client")
+	})
+
+	t.Run("mediator client creation error", func(t *testing.T) {
+		config := config()
+		config.Aries = &mockprovider.Provider{
+			ServiceMap: map[string]interface{}{
+				outofbandsvc.Name:     &mockoutofband.MockService{},
+				didexdsvc.DIDExchange: &mocksvc.MockDIDExchangeSvc{},
+			},
+		}
+
+		o, err := New(config)
+		require.Nil(t, o)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "mediator client")
+	})
+
+	t.Run("didex client creation error", func(t *testing.T) {
+		config := config()
+		config.Aries = &mockprovider.Provider{
+			ServiceMap: map[string]interface{}{
+				outofbandsvc.Name:         &mockoutofband.MockService{},
+				mediatordsvc.Coordination: &mockroute.MockMediatorSvc{},
+			},
 		}
 
 		o, err := New(config)
@@ -100,6 +134,27 @@ func TestDIDCommListener(t *testing.T) {
 			Message: service.NewDIDCommMsgMap(struct {
 				Type string `json:"@type,omitempty"`
 			}{Type: didexdsvc.RequestMsgType}),
+			Continue: func(args interface{}) {
+				require.Nil(t, args)
+
+				done <- struct{}{}
+			},
+		}
+
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			require.Fail(t, "tests are not validated due to timeout")
+		}
+	})
+
+	t.Run("mediation request", func(t *testing.T) {
+		done := make(chan struct{})
+
+		actionCh <- service.DIDCommAction{
+			Message: service.NewDIDCommMsgMap(struct {
+				Type string `json:"@type,omitempty"`
+			}{Type: mediatordsvc.RequestMsgType}),
 			Continue: func(args interface{}) {
 				require.Nil(t, args)
 

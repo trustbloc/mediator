@@ -64,15 +64,15 @@ func New(config *Config) (*Operation, error) {
 
 	oobClient, err := aries.CreateOutofbandClient(config.Aries)
 	if err != nil {
-		return nil, fmt.Errorf("didexchange client: %w", err)
-	}
-
-	didExchangeClient, err := aries.CreateDIDExchangeClient(config.Aries, actionCh)
-	if err != nil {
-		return nil, fmt.Errorf("didexchange client: %w", err)
+		return nil, fmt.Errorf("out-of-band client: %w", err)
 	}
 
 	mediatorClient, err := aries.CreateMediatorClient(config.Aries, actionCh)
+	if err != nil {
+		return nil, fmt.Errorf("mediator client: %w", err)
+	}
+
+	didExchangeClient, err := aries.CreateDIDExchangeClient(config.Aries, actionCh)
 	if err != nil {
 		return nil, fmt.Errorf("didexchange client: %w", err)
 	}

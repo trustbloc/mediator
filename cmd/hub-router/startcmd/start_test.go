@@ -159,6 +159,41 @@ func TestGetStartCmd(t *testing.T) {
 		require.Contains(t, err.Error(), "invalid dbURL malformed")
 	})
 
+	t.Run("invalid system cert flag", func(t *testing.T) {
+		startCmd := GetStartCmd(&mockServer{})
+
+		args := []string{
+			"--" + hostURLFlagName, "localhost:8080",
+			"--" + didCommHTTPHostFlagName, randomURL(t),
+			"--" + didCommWSHostFlagName, randomURL(t),
+			"--" + datasourcePersistentFlagName, "malformed",
+			"--" + tlsSystemCertPoolFlagName, "mem://tests",
+		}
+		startCmd.SetArgs(args)
+
+		err := startCmd.Execute()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid syntax")
+	})
+
+	t.Run("invalid dsn timeout", func(t *testing.T) {
+		startCmd := GetStartCmd(&mockServer{})
+
+		args := []string{
+			"--" + hostURLFlagName, "localhost:8080",
+			"--" + didCommHTTPHostFlagName, randomURL(t),
+			"--" + didCommWSHostFlagName, randomURL(t),
+			"--" + datasourcePersistentFlagName, "mem://tests",
+			"--" + datasourceTransientFlagName, "mem://tests",
+			"--" + datasourceTimeoutFlagName, "invalid",
+		}
+		startCmd.SetArgs(args)
+
+		err := startCmd.Execute()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to parse dsn timeout")
+	})
+
 	t.Run("missing didcomm inbound host", func(t *testing.T) {
 		startCmd := GetStartCmd(&mockServer{})
 
@@ -216,6 +251,79 @@ func TestStartHubRouter(t *testing.T) {
 		err = startHubRouter(params, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "cert path and key path are mandatory : missing key path")
+	})
+
+	t.Run("serve tls", func(t *testing.T) {
+		params := &hubRouterParameters{
+			tlsParams: &tlsParameters{
+				serveKeyPath:  "/test",
+				serveCertPath: "/test",
+				caCerts:       []string{"test"},
+			},
+		}
+
+		err := startHubRouter(params, nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "get root CAs")
+	})
+
+	t.Run("serve tls", func(t *testing.T) {
+		params := &hubRouterParameters{
+			tlsParams: &tlsParameters{
+				serveKeyPath: "/test",
+			},
+		}
+
+		err := serveHubRouter(params, &mockServer{}, nil)
+		require.NoError(t, err)
+	})
+}
+
+func TestSupportedDatabases(t *testing.T) {
+	t.Run("edge store", func(t *testing.T) {
+		tests := []struct {
+			dbURL          string
+			isErr          bool
+			expectedErrMsg string
+		}{
+			{dbURL: "mem://test", isErr: false},
+			{dbURL: "mysql://test", isErr: true, expectedErrMsg: "edgestore init - connect to storage at test"},
+			{dbURL: "random", isErr: true, expectedErrMsg: "invalid dbURL random"},
+		}
+
+		for _, test := range tests {
+			_, err := initEdgeStore(test.dbURL, "hr-store", 1)
+
+			if !test.isErr {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), test.expectedErrMsg)
+			}
+		}
+	})
+
+	t.Run("aries store", func(t *testing.T) {
+		tests := []struct {
+			dbURL          string
+			isErr          bool
+			expectedErrMsg string
+		}{
+			{dbURL: "mem://test", isErr: false},
+			{dbURL: "mysql://test", isErr: true, expectedErrMsg: "ariesstore init - connect to storage at test"},
+			{dbURL: "random", isErr: true, expectedErrMsg: "invalid dbURL random"},
+		}
+
+		for _, test := range tests {
+			_, err := initAriesStore(test.dbURL, "hr-store", 1)
+
+			if !test.isErr {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), test.expectedErrMsg)
+			}
+		}
 	})
 }
 

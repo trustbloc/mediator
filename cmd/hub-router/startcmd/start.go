@@ -444,21 +444,25 @@ func startHubRouter(params *hubRouterParameters, srv server) error {
 
 	rootCAs, err := tlsutils.GetCertPool(params.tlsParams.systemCertPool, params.tlsParams.caCerts)
 	if err != nil {
-		return err
+		return fmt.Errorf("get root CAs : %w", err)
 	}
-
-	router := mux.NewRouter()
 
 	ariesCtx, err := createAriesAgent(params, &tls.Config{RootCAs: rootCAs, MinVersion: tls.VersionTLS12})
 	if err != nil {
 		return err
 	}
 
+	router := mux.NewRouter()
+
 	err = addHandlers(params, ariesCtx, router)
 	if err != nil {
 		return fmt.Errorf("failed to add handlers: %w", err)
 	}
 
+	return serveHubRouter(params, srv, router)
+}
+
+func serveHubRouter(params *hubRouterParameters, srv server, router http.Handler) error {
 	handler := cors.Default().Handler(router)
 
 	if params.tlsParams.serveCertPath == "" && params.tlsParams.serveKeyPath == "" {
