@@ -5,6 +5,7 @@
 # Namespace for the docker images
 DOCKER_OUTPUT_NS   ?= docker.pkg.github.com
 DOCKER_IMAGE_NAME ?= trustbloc/hub-router/hub-router
+WEBHOOK_IMAGE_NAME ?= trustbloc/hub-router/sample-webhook
 
 # Tool commands (overridable)
 ALPINE_VER ?= 3.12
@@ -29,7 +30,7 @@ unit-test:
 	@scripts/check_unit.sh
 
 .PHONY: bdd-test
-bdd-test: clean test-keys docker
+bdd-test: clean test-keys docker sample-webhook-docker
 	@scripts/check_integration.sh
 
 .PHONY: test-keys
@@ -53,6 +54,21 @@ hub-router:
 	@echo "Building hub-router"
 	@mkdir -p ./.build/bin
 	@cd cmd/hub-router && go build -o ../../.build/bin/hub-router main.go
+
+.PHONY: sample-webhook
+sample-webhook:
+	@echo "Building sample webhook server"
+	@mkdir -p ./build/bin
+	@go build -o ./build/bin/webhook-server test/bdd/cmd/webhook/main.go
+
+.PHONY: sample-webhook-docker
+sample-webhook-docker:
+	@echo "Building sample webhook server docker image"
+	@docker build -f ./images/mocks/webhook/Dockerfile --no-cache -t $(DOCKER_OUTPUT_NS)/$(WEBHOOK_IMAGE_NAME):latest \
+	--build-arg GO_VER=$(GO_VER) \
+	--build-arg ALPINE_VER=$(ALPINE_VER) \
+	--build-arg GO_TAGS=$(GO_TAGS) \
+	--build-arg GOPROXY=$(GOPROXY) .
 
 .PHONY: clean
 clean:

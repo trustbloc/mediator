@@ -16,9 +16,12 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/cucumber/godog"
+	"github.com/google/uuid"
 	"github.com/hyperledger/aries-framework-go/pkg/client/outofband"
 	didexcmd "github.com/hyperledger/aries-framework-go/pkg/controller/command/didexchange"
+	"github.com/hyperledger/aries-framework-go/pkg/controller/command/messaging"
 	oobcmd "github.com/hyperledger/aries-framework-go/pkg/controller/command/outofband"
+	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/hub-router/pkg/restapi/operation"
@@ -29,13 +32,27 @@ import (
 var logger = log.New("hub-router/routersteps")
 
 const (
-	hubRouterURL  = "https://localhost:10200"
-	walletAPIURL  = "https://localhost:10210"
-	adapterAPIURL = "https://localhost:10220"
+	// base urls.
+	hubRouterURL     = "https://localhost:10200"
+	walletAPIURL     = "https://localhost:10210"
+	adapterAPIURL    = "https://localhost:10220"
+	walletWebhookURL = "http://localhost:10211"
 
+	// connection paths.
 	createInvitationPath   = "/outofband/create-invitation"
 	acceptInvitationPath   = "/outofband/accept-invitation"
 	connectionsByIDPathFmt = "/connections/%s"
+
+	// msg service paths.
+	msgServiceOperationID = "/message"
+	registerMsgService    = msgServiceOperationID + "/register-service"
+	msgServiceList        = msgServiceOperationID + "/services"
+	sendNewMsg            = msgServiceOperationID + "/send"
+
+	// webhook.
+	checkForTopics               = "/checktopics"
+	pullTopicsWaitInMilliSec     = 200
+	pullTopicsAttemptsBeforeFail = 5000 / pullTopicsWaitInMilliSec
 )
 
 // Steps is steps for VC BDD tests.
@@ -60,6 +77,9 @@ func (e *Steps) RegisterSteps(s *godog.Suite) {
 	s.Step(`^Wallet registers with the Router for mediation$`, e.mediationRegistration)
 	s.Step(`^Wallet gets invitation from Adapter$`, e.adapterInvitation)
 	s.Step(`^Wallet connects with Adapter$`, e.connectWithAdapter)
+	s.Step(`^Wallet sends establish connection request for adapter$`, e.establishConnReq)
+	s.Step(`^Wallet passes the details of router to adapter$`, e.adpaterEstablishConn)
+	s.Step(`^Adapter registers with the Router for mediation$`, e.routeRegistration)
 }
 
 func (e *Steps) invitation() error {
@@ -112,6 +132,105 @@ func (e *Steps) connectWithAdapter() error {
 		return fmt.Errorf("connect with adapter : %w", err)
 	}
 
+	return nil
+}
+
+func (e *Steps) establishConnReq() error {
+	name := uuid.New().String()
+	params := messaging.RegisterMsgSvcArgs{
+		Type:    "https://didcomm.org/router/1.0/establish-conn-resp",
+		Name:    name,
+		Purpose: []string{"establish-conn-resp"},
+	}
+
+	logger.Debugf("Registering message service for agent[%s],  params : %s", params)
+
+	reqBytes, err := json.Marshal(params)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(reqBytes))
+
+	err = bddutil.SendHTTPReq(http.MethodPost, walletAPIURL+registerMsgService, reqBytes, nil, e.bddContext.TLSConfig)
+	if err != nil {
+		return err
+	}
+
+	// verify if service just registered exists in registered services list
+	result := &messaging.RegisteredServicesResponse{}
+
+	err = bddutil.SendHTTPReq(http.MethodGet, walletAPIURL+msgServiceList, nil, result, e.bddContext.TLSConfig)
+	if err != nil {
+		return err
+	}
+
+	var found bool
+
+	for _, svcName := range result.Names {
+		if svcName == name {
+			found = true
+
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("failed to find registered service '%s' in registered services list", name)
+	}
+
+	// prepare message
+	msg := &operation.EstablishConn{
+		ID:      uuid.New().String(),
+		Type:    "https://didcomm.org/router/1.0/establish-conn-req",
+		Purpose: []string{"establish-conn-req"},
+	}
+
+	rawBytes, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("failed to get raw message bytes:  %w", err)
+	}
+
+	request := &messaging.SendNewMessageArgs{
+		ConnectionID: e.routerConnID,
+		MessageBody:  rawBytes,
+	}
+
+	reqBytes, err = json.Marshal(request)
+	if err != nil {
+		return err
+	}
+
+	// call controller to send message
+	err = bddutil.SendHTTPReq(http.MethodPost, walletAPIURL+sendNewMsg, reqBytes, nil, e.bddContext.TLSConfig)
+	if err != nil {
+		return fmt.Errorf("failed to send message : %w", err)
+	}
+
+	msg1, err := e.pullMsgFromWebhookURL(walletWebhookURL, name)
+	if err != nil {
+		return fmt.Errorf("failed to pull incoming message from webhook : %w", err)
+	}
+
+	incomingMsg := struct {
+		Message  service.DIDCommMsgMap `json:"message"`
+		MyDID    string                `json:"mydid"`
+		TheirDID string                `json:"theirdid"`
+	}{}
+
+	err = msg1.Decode(&incomingMsg)
+	if err != nil {
+		return fmt.Errorf("failed to read message: %w", err)
+	}
+
+	return nil
+}
+
+func (e *Steps) adpaterEstablishConn() error {
+	return nil
+}
+
+func (e *Steps) routeRegistration() error {
 	return nil
 }
 
@@ -251,4 +370,35 @@ func (e *Steps) validateConnection(connID, state string) error {
 				t, retryErr)
 		},
 	)
+}
+
+func (e *Steps) pullMsgFromWebhookURL(webhookURL, topic string) (*service.DIDCommMsgMap, error) {
+	var incoming struct {
+		ID      string                `json:"id"`
+		Topic   string                `json:"topic"`
+		Message service.DIDCommMsgMap `json:"message"`
+	}
+
+	// try to pull recently pushed topics from webhook
+	for i := 0; i < pullTopicsAttemptsBeforeFail; {
+		err := bddutil.SendHTTPReq(http.MethodGet, webhookURL+checkForTopics,
+			nil, &incoming, e.bddContext.TLSConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed pull topics from webhook, cause : %w", err)
+		}
+
+		if incoming.Topic != topic {
+			continue
+		}
+
+		if len(incoming.Message) > 0 {
+			return &incoming.Message, nil
+		}
+
+		i++
+
+		time.Sleep(pullTopicsWaitInMilliSec * time.Millisecond)
+	}
+
+	return nil, fmt.Errorf("exhausted all [%d] attempts to pull topics from webhook", pullTopicsAttemptsBeforeFail)
 }

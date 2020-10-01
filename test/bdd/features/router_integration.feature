@@ -6,11 +6,14 @@
 
 @all
 @hub_router
-Feature: DID Exchange through Router
+Feature: Hub Router Integration
 
-  Scenario: DID Exchange with Router
+  Scenario: Establish Connection between Adapter and Router through Wallet
     When Wallet gets DIDComm invitation from hub-router
     Then Wallet connects with Router
-    And  Wallet registers with the Router for mediation
-    Then Wallet gets invitation from Adapter
-    And  Wallet connects with Adapter
+#    And  Wallet registers with the Router for mediation
+#    Then Wallet gets invitation from Adapter
+#    And  Wallet connects with Adapter
+    Then Wallet sends establish connection request for adapter
+    And  Wallet passes the details of router to adapter
+    And  Adapter registers with the Router for mediation

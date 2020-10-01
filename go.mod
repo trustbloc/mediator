@@ -7,6 +7,7 @@ module github.com/trustbloc/hub-router
 go 1.15
 
 require (
+	github.com/google/uuid v1.1.1
 	github.com/hyperledger/aries-framework-go v0.1.5-0.20200918143342-09b3e884d06f
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
