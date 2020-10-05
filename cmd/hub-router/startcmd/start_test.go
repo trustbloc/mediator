@@ -217,7 +217,7 @@ func TestGetStartCmd(t *testing.T) {
 			datasourceParams: &datasourceParams{},
 		}
 
-		err := addHandlers(parameters, nil, nil)
+		err := addHandlers(parameters, nil, nil, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "init persistent storage provider with url : invalid dbURL")
 

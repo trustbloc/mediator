@@ -7,14 +7,19 @@ SPDX-License-Identifier: Apache-2.0
 package operation
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/hyperledger/aries-framework-go/pkg/client/outofband"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
+	"github.com/hyperledger/aries-framework-go/pkg/didcomm/messaging/msghandler"
 	didexdsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/didexchange"
 	mediatordsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/mediator"
+	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
+	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdri"
 	"github.com/trustbloc/edge-core/pkg/log"
 	"github.com/trustbloc/edge-core/pkg/storage"
 
@@ -27,6 +32,15 @@ import (
 const (
 	healthCheckPath = "/healthcheck"
 	invitationPath  = "/didcomm/invitation"
+)
+
+// Msg svc constants.
+const (
+	msgTypeBaseURI        = "https://trustbloc.github.io/blinded-routing/1.0"
+	createConnReq         = msgTypeBaseURI + "/create-conn-req"
+	createConnResp        = msgTypeBaseURI + "/create-conn-resp"
+	createConnReqPurpose  = "create-conn-req"
+	createConnRespPurpose = "create-conn-resp"
 )
 
 var logger = log.New("hub-router/operations")
@@ -46,16 +60,20 @@ type Storage struct {
 
 // Config holds configuration.
 type Config struct {
-	Aries   aries.Ctx
-	Storage *Storage
+	Aries          aries.Ctx
+	AriesMessenger service.Messenger
+	MsgRegistrar   *msghandler.Registrar
+	Storage        *Storage
 }
 
 // Operation implements hub-router operations.
 type Operation struct {
-	storage     *Storage
-	oob         aries.OutOfBand
-	didExchange aries.DIDExchange
-	mediator    aries.Mediator
+	storage      *Storage
+	oob          aries.OutOfBand
+	didExchange  aries.DIDExchange
+	mediator     aries.Mediator
+	messenger    service.Messenger
+	vdriRegistry vdri.Registry
 }
 
 // New returns a new Operation.
@@ -78,13 +96,26 @@ func New(config *Config) (*Operation, error) {
 	}
 
 	o := &Operation{
-		storage:     config.Storage,
-		oob:         oobClient,
-		didExchange: didExchangeClient,
-		mediator:    mediatorClient,
+		storage:      config.Storage,
+		oob:          oobClient,
+		didExchange:  didExchangeClient,
+		mediator:     mediatorClient,
+		messenger:    config.AriesMessenger,
+		vdriRegistry: config.Aries.VDRIRegistry(),
+	}
+
+	msgCh := make(chan service.DIDCommMsg, 1)
+
+	msgSvc := aries.NewMsgSvc("create-connection", createConnReq, createConnReqPurpose, msgCh)
+
+	err = config.MsgRegistrar.Register(msgSvc)
+	if err != nil {
+		return nil, fmt.Errorf("message service client: %w", err)
 	}
 
 	go o.didCommActionListener(actionCh)
+
+	go o.didCommMsgListener(msgCh)
 
 	return o, nil
 }
@@ -149,4 +180,83 @@ func (o *Operation) didCommActionListener(ch <-chan service.DIDCommAction) {
 			msg.Continue(args)
 		}
 	}
+}
+
+func (o *Operation) didCommMsgListener(ch <-chan service.DIDCommMsg) {
+	for msg := range ch {
+		var err error
+
+		var msgMap service.DIDCommMsgMap
+
+		switch msg.Type() {
+		case createConnReq:
+			msgMap, err = o.handleCreateConnReq(msg)
+		default:
+			err = fmt.Errorf("unsupported message service type : %s", msg.Type())
+		}
+
+		if err != nil {
+			msgMap = service.NewDIDCommMsgMap(&CreateConnResp{
+				ID:      uuid.New().String(),
+				Type:    createConnResp,
+				Purpose: []string{createConnRespPurpose},
+				Data:    &CreateConnRespData{ErrorMsg: err.Error()},
+			})
+
+			logger.Errorf("msgType=[%s] id=[%s] errMsg=[%s]", msg.Type(), msg.ID(), err.Error())
+		}
+
+		err = o.messenger.ReplyTo(msg.ID(), msgMap)
+		if err != nil {
+			logger.Errorf("sendReply : msgType=[%s] id=[%s] errMsg=[%s]", msg.Type(), msg.ID(), err.Error())
+
+			continue
+		}
+
+		logger.Infof("msgType=[%s] id=[%s] msg=[%s]", msg.Type(), msg.ID(), "success")
+	}
+}
+
+func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDCommMsgMap, error) {
+	pMsg := CreateConnReq{}
+
+	err := msg.Decode(&pMsg)
+	if err != nil {
+		return nil, fmt.Errorf("parse didcomm message : %w", err)
+	}
+
+	// get the peerDID from the request
+	if pMsg.Data == nil || pMsg.Data.DIDDoc == nil {
+		return nil, errors.New("did document mandatory")
+	}
+
+	didDoc, err := did.ParseDocument(pMsg.Data.DIDDoc)
+	if err != nil {
+		return nil, fmt.Errorf("parse did doc : %w", err)
+	}
+
+	// create peer DID
+	newDidDoc, err := o.vdriRegistry.Create("peer", vdri.WithServiceEndpoint(""))
+	if err != nil {
+		return nil, fmt.Errorf("create new peer did : %w", err)
+	}
+
+	// create connection
+	_, err = o.didExchange.CreateConnection(newDidDoc.ID, didDoc)
+	if err != nil {
+		return nil, fmt.Errorf("create connection : %w", err)
+	}
+
+	docBytes, err := newDidDoc.JSONBytes()
+	if err != nil {
+		return nil, fmt.Errorf("marshal did doc : %w", err)
+	}
+
+	// send router did doc
+	return service.NewDIDCommMsgMap(&CreateConnResp{
+		ID:      uuid.New().String(),
+		Type:    createConnResp,
+		Purpose: []string{createConnRespPurpose},
+		Data:    &CreateConnRespData{DIDDoc: docBytes},
+	}), nil
 }

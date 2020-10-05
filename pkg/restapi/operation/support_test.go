@@ -9,6 +9,7 @@ package operation
 import (
 	"fmt"
 
+	"github.com/hyperledger/aries-framework-go/pkg/didcomm/messaging/msghandler"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/mediator"
 	outofbandsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/outofband"
@@ -43,7 +44,8 @@ func getAriesCtx() aries.Ctx {
 
 func config() *Config {
 	return &Config{
-		Aries: getAriesCtx(),
+		Aries:        getAriesCtx(),
+		MsgRegistrar: msghandler.NewRegistrar(),
 		Storage: &Storage{
 			Persistent: memstore.NewProvider(),
 			Transient:  memstore.NewProvider(),

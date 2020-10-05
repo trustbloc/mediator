@@ -14,16 +14,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 	didexdsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/didexchange"
 	mediatordsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/mediator"
 	outofbandsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/outofband"
+	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
 	mocksvc "github.com/hyperledger/aries-framework-go/pkg/mock/didcomm/protocol/didexchange"
 	mockroute "github.com/hyperledger/aries-framework-go/pkg/mock/didcomm/protocol/mediator"
+	mockdiddoc "github.com/hyperledger/aries-framework-go/pkg/mock/diddoc"
 	mockprovider "github.com/hyperledger/aries-framework-go/pkg/mock/provider"
 	mockstore "github.com/hyperledger/aries-framework-go/pkg/mock/storage"
+	mockvdri "github.com/hyperledger/aries-framework-go/pkg/mock/vdri"
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/hub-router/pkg/internal/mock/didexchange"
+	"github.com/trustbloc/hub-router/pkg/internal/mock/messenger"
 	mockoutofband "github.com/trustbloc/hub-router/pkg/internal/mock/outofband"
 )
 
@@ -188,5 +194,189 @@ func TestDIDCommListener(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			require.Fail(t, "tests are not validated due to timeout")
 		}
+	})
+}
+
+func TestDIDCommMsgListener(t *testing.T) {
+	t.Run("unsupported message type", func(t *testing.T) {
+		c, err := New(config())
+		require.NoError(t, err)
+
+		done := make(chan struct{})
+
+		c.messenger = &messenger.MockMessenger{
+			ReplyToFunc: func(msgID string, msg service.DIDCommMsgMap) error {
+				pMsg := &CreateConnResp{}
+				err = msg.Decode(pMsg)
+				require.NoError(t, err)
+
+				require.Contains(t, pMsg.Data.ErrorMsg, "unsupported message service type : unsupported-message-type")
+				require.Empty(t, pMsg.Data.DIDDoc)
+
+				done <- struct{}{}
+
+				return nil
+			},
+		}
+
+		msgCh := make(chan service.DIDCommMsg, 1)
+		go c.didCommMsgListener(msgCh)
+
+		msgCh <- service.NewDIDCommMsgMap(struct {
+			Type string `json:"@type,omitempty"`
+		}{Type: "unsupported-message-type"})
+
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			require.Fail(t, "tests are not validated due to timeout")
+		}
+	})
+
+	t.Run("messenger reply error", func(t *testing.T) {
+		c, err := New(config())
+		require.NoError(t, err)
+
+		c.messenger = &messenger.MockMessenger{
+			ReplyToFunc: func(msgID string, msg service.DIDCommMsgMap) error {
+				return errors.New("reply error")
+			},
+		}
+
+		msgCh := make(chan service.DIDCommMsg, 1)
+		go c.didCommMsgListener(msgCh)
+
+		msgCh <- service.NewDIDCommMsgMap(struct {
+			Type string `json:"@type,omitempty"`
+		}{Type: "unsupported-message-type"})
+	})
+
+	t.Run("create connection request", func(t *testing.T) {
+		c, err := New(config())
+		require.NoError(t, err)
+
+		done := make(chan struct{})
+
+		c.messenger = &messenger.MockMessenger{
+			ReplyToFunc: func(msgID string, msg service.DIDCommMsgMap) error {
+				pMsg := &CreateConnResp{}
+				dErr := msg.Decode(pMsg)
+				require.NoError(t, dErr)
+
+				didDoc, dErr := did.ParseDocument(pMsg.Data.DIDDoc)
+				require.NoError(t, dErr)
+
+				require.Contains(t, didDoc.ID, "did:")
+				require.Equal(t, pMsg.Type, createConnResp)
+				require.Equal(t, pMsg.Purpose, []string{createConnRespPurpose})
+
+				done <- struct{}{}
+
+				return nil
+			},
+		}
+
+		msgCh := make(chan service.DIDCommMsg, 1)
+		go c.didCommMsgListener(msgCh)
+
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc().JSONBytes()
+		require.NoError(t, err)
+
+		msgCh <- service.NewDIDCommMsgMap(CreateConnReq{
+			ID:      uuid.New().String(),
+			Type:    createConnReq,
+			Purpose: []string{createConnReqPurpose},
+			Data: &CreateConnReqData{
+				DIDDoc: didDocBytes,
+			},
+		})
+
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			require.Fail(t, "tests are not validated due to timeout")
+		}
+	})
+}
+
+func TestCreateConnectionReqHanlder(t *testing.T) {
+	t.Run("no did doc", func(t *testing.T) {
+		c, err := New(config())
+		require.NoError(t, err)
+
+		msg := service.NewDIDCommMsgMap(CreateConnReq{
+			ID:      uuid.New().String(),
+			Type:    createConnReq,
+			Purpose: []string{createConnReqPurpose},
+			Data:    &CreateConnReqData{},
+		})
+
+		_, err = c.handleCreateConnReq(msg)
+		require.Contains(t, err.Error(), "did document mandatory")
+	})
+
+	t.Run("invalid did doc", func(t *testing.T) {
+		c, err := New(config())
+		require.NoError(t, err)
+
+		msg := service.NewDIDCommMsgMap(CreateConnReq{
+			ID:      uuid.New().String(),
+			Type:    createConnReq,
+			Purpose: []string{createConnReqPurpose},
+			Data: &CreateConnReqData{
+				DIDDoc: []byte("invalid-diddoc"),
+			},
+		})
+
+		_, err = c.handleCreateConnReq(msg)
+		require.Contains(t, err.Error(), "parse did doc")
+	})
+
+	t.Run("invalid did doc", func(t *testing.T) {
+		c, err := New(config())
+		require.NoError(t, err)
+
+		c.vdriRegistry = &mockvdri.MockVDRIRegistry{
+			CreateErr: errors.New("did create error"),
+		}
+
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc().JSONBytes()
+		require.NoError(t, err)
+
+		msg := service.NewDIDCommMsgMap(CreateConnReq{
+			ID:      uuid.New().String(),
+			Type:    createConnReq,
+			Purpose: []string{createConnReqPurpose},
+			Data: &CreateConnReqData{
+				DIDDoc: didDocBytes,
+			},
+		})
+
+		_, err = c.handleCreateConnReq(msg)
+		require.Contains(t, err.Error(), "create new peer did")
+	})
+
+	t.Run("create conn error", func(t *testing.T) {
+		c, err := New(config())
+		require.NoError(t, err)
+
+		c.didExchange = &didexchange.MockClient{
+			CreateConnErr: errors.New("create error"),
+		}
+
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc().JSONBytes()
+		require.NoError(t, err)
+
+		msg := service.NewDIDCommMsgMap(CreateConnReq{
+			ID:      uuid.New().String(),
+			Type:    createConnReq,
+			Purpose: []string{createConnReqPurpose},
+			Data: &CreateConnReqData{
+				DIDDoc: didDocBytes,
+			},
+		})
+
+		_, err = c.handleCreateConnReq(msg)
+		require.Contains(t, err.Error(), "create connection")
 	})
 }
