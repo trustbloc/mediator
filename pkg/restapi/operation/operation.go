@@ -236,7 +236,7 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 	}
 
 	// create peer DID
-	newDidDoc, err := o.vdriRegistry.Create("peer", vdri.WithServiceEndpoint(""))
+	newDidDoc, err := o.vdriRegistry.Create("peer", vdri.WithDefaultServiceEndpoint(""))
 	if err != nil {
 		return nil, fmt.Errorf("create new peer did : %w", err)
 	}
