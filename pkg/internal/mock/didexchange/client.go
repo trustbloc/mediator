@@ -7,14 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package didexchange
 
 import (
+	"github.com/google/uuid"
 	"github.com/hyperledger/aries-framework-go/pkg/client/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
+	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
 )
 
 // MockClient is a mock didexchange.MockClient used in tests.
 type MockClient struct {
-	ActionEventFunc     func(chan<- service.DIDCommAction) error
-	CreateInvitationErr error
+	ActionEventFunc func(chan<- service.DIDCommAction) error
+	CreateConnErr   error
 }
 
 // RegisterActionEvent registers the action event channel.
@@ -26,11 +28,11 @@ func (c *MockClient) RegisterActionEvent(actions chan<- service.DIDCommAction) e
 	return nil
 }
 
-// CreateInvitation creates an explicit invitation.
-func (c *MockClient) CreateInvitation(label string) (*didexchange.Invitation, error) {
-	if c.CreateInvitationErr != nil {
-		return nil, c.CreateInvitationErr
+// CreateConnection creates connection.
+func (c *MockClient) CreateConnection(_ string, _ *did.Doc, _ ...didexchange.ConnectionOption) (string, error) {
+	if c.CreateConnErr != nil {
+		return "", c.CreateConnErr
 	}
 
-	return &didexchange.Invitation{}, nil
+	return uuid.New().String(), nil
 }

@@ -18,11 +18,12 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gorilla/mux"
 	arieslog "github.com/hyperledger/aries-framework-go/pkg/common/log"
+	"github.com/hyperledger/aries-framework-go/pkg/didcomm/messaging/msghandler"
 	arieshttp "github.com/hyperledger/aries-framework-go/pkg/didcomm/transport/http"
 	ariesws "github.com/hyperledger/aries-framework-go/pkg/didcomm/transport/ws"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries"
+	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/defaults"
-	ariesctx "github.com/hyperledger/aries-framework-go/pkg/framework/context"
 	ariesstorage "github.com/hyperledger/aries-framework-go/pkg/storage"
 	ariesmem "github.com/hyperledger/aries-framework-go/pkg/storage/mem"
 	ariesmysql "github.com/hyperledger/aries-framework-go/pkg/storage/mysql"
@@ -35,7 +36,6 @@ import (
 	cmdutils "github.com/trustbloc/edge-core/pkg/utils/cmd"
 	tlsutils "github.com/trustbloc/edge-core/pkg/utils/tls"
 
-	routeraries "github.com/trustbloc/hub-router/pkg/aries"
 	"github.com/trustbloc/hub-router/pkg/restapi/operation"
 )
 
@@ -447,14 +447,16 @@ func startHubRouter(params *hubRouterParameters, srv server) error {
 		return fmt.Errorf("get root CAs : %w", err)
 	}
 
-	ariesCtx, err := createAriesAgent(params, &tls.Config{RootCAs: rootCAs, MinVersion: tls.VersionTLS12})
+	msgRegistrar := msghandler.NewRegistrar()
+
+	framework, err := createAriesAgent(params, &tls.Config{RootCAs: rootCAs, MinVersion: tls.VersionTLS12}, msgRegistrar)
 	if err != nil {
 		return err
 	}
 
 	router := mux.NewRouter()
 
-	err = addHandlers(params, ariesCtx, router)
+	err = addHandlers(params, framework, router, msgRegistrar)
 	if err != nil {
 		return fmt.Errorf("failed to add handlers: %w", err)
 	}
@@ -481,14 +483,22 @@ func serveHubRouter(params *hubRouterParameters, srv server, router http.Handler
 	)
 }
 
-func addHandlers(params *hubRouterParameters, ariesCtx routeraries.Ctx, router *mux.Router) error {
+func addHandlers(params *hubRouterParameters, framework *aries.Aries, router *mux.Router,
+	msgRegistrar *msghandler.Registrar) error {
 	store, tStore, err := initAllEdgeStores(params.datasourceParams)
 	if err != nil {
 		return err
 	}
 
+	ctx, err := framework.Context()
+	if err != nil {
+		return fmt.Errorf("aries-framework - get aries context : %w", err)
+	}
+
 	o, err := operation.New(&operation.Config{
-		Aries: ariesCtx,
+		Aries:          ctx,
+		AriesMessenger: framework.Messenger(),
+		MsgRegistrar:   msgRegistrar,
 		Storage: &operation.Storage{
 			Persistent: store,
 			Transient:  tStore,
@@ -507,15 +517,12 @@ func addHandlers(params *hubRouterParameters, ariesCtx routeraries.Ctx, router *
 	return nil
 }
 
-func createAriesAgent(parameters *hubRouterParameters, tlsConfig *tls.Config) (*ariesctx.Provider, error) {
-	var opts []aries.Option
-
+func createAriesAgent(parameters *hubRouterParameters, tlsConfig *tls.Config,
+	msgRegistrar api.MessageServiceProvider) (*aries.Aries, error) {
 	store, tStore, err := initAriesStores(parameters.datasourceParams)
 	if err != nil {
 		return nil, fmt.Errorf("init aries storage: %w", err)
 	}
-
-	opts = append(opts, aries.WithStoreProvider(store), aries.WithProtocolStateStoreProvider(tStore))
 
 	inboundHTTPTransportOpt := defaults.WithInboundHTTPAddr(
 		parameters.didCommParameters.httpHostInternal,
@@ -531,8 +538,6 @@ func createAriesAgent(parameters *hubRouterParameters, tlsConfig *tls.Config) (*
 		parameters.tlsParams.serveKeyPath,
 	)
 
-	opts = append(opts, inboundHTTPTransportOpt, inboundWSTransportOpt)
-
 	outboundHTTP, err := arieshttp.NewOutbound(arieshttp.WithOutboundTLSConfig(tlsConfig))
 	if err != nil {
 		return nil, fmt.Errorf("aries-framework - create outbound tranpsort opts : %w", err)
@@ -540,19 +545,21 @@ func createAriesAgent(parameters *hubRouterParameters, tlsConfig *tls.Config) (*
 
 	outboundWS := ariesws.NewOutbound()
 
-	opts = append(opts, aries.WithOutboundTransports(outboundHTTP, outboundWS))
+	opts := []aries.Option{
+		aries.WithStoreProvider(store),
+		aries.WithProtocolStateStoreProvider(tStore),
+		inboundHTTPTransportOpt,
+		inboundWSTransportOpt,
+		aries.WithOutboundTransports(outboundHTTP, outboundWS),
+		aries.WithMessageServiceProvider(msgRegistrar),
+	}
 
 	framework, err := aries.New(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("aries-framework - initialize framework : %w", err)
 	}
 
-	ctx, err := framework.Context()
-	if err != nil {
-		return nil, fmt.Errorf("aries-framework - get aries context : %w", err)
-	}
-
-	return ctx, nil
+	return framework, nil
 }
 
 func initAllEdgeStores(params *datasourceParams) (persistent, transient storage.Provider, err error) {
