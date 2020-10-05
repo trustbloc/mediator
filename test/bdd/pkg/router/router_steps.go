@@ -98,7 +98,7 @@ func (e *Steps) invitation() error {
 }
 
 func (e *Steps) connectWithRouter() error {
-	err := e.connect(e.routerInvitationStr)
+	err := e.connect(e.routerInvitationStr, "")
 	if err != nil {
 		return fmt.Errorf("connect with router : %w", err)
 	}
@@ -107,7 +107,7 @@ func (e *Steps) connectWithRouter() error {
 }
 
 func (e *Steps) connectWithAdapter() error {
-	err := e.connect(e.adapterInvitationStr)
+	err := e.connect(e.adapterInvitationStr, e.routerConnID)
 	if err != nil {
 		return fmt.Errorf("connect with adapter : %w", err)
 	}
@@ -115,9 +115,9 @@ func (e *Steps) connectWithAdapter() error {
 	return nil
 }
 
-func (e *Steps) connect(invitation *outofband.Invitation) error {
+func (e *Steps) connect(invitation *outofband.Invitation, routerConnID string) error {
 	// receive invitation
-	connID, err := e.receiveInvitation(invitation)
+	connID, err := e.receiveInvitation(invitation, routerConnID)
 	if err != nil {
 		return fmt.Errorf("receive inviation : %w", err)
 	}
@@ -184,10 +184,11 @@ func (e *Steps) adapterInvitation() error {
 	return nil
 }
 
-func (e *Steps) receiveInvitation(invitation *outofband.Invitation) (string, error) {
+func (e *Steps) receiveInvitation(invitation *outofband.Invitation, routerConnID string) (string, error) {
 	req := oobcmd.AcceptInvitationArgs{
-		Invitation: invitation,
-		MyLabel:    "wallet",
+		Invitation:        invitation,
+		MyLabel:           "wallet",
+		RouterConnections: routerConnID,
 	}
 
 	reqBytes, err := json.Marshal(req)
