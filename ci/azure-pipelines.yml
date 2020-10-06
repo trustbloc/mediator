@@ -79,7 +79,7 @@ jobs:
           source ci/version_var.sh
           echo $DOCKER_PASSWORD | docker login docker.pkg.github.com --username $DOCKER_USER --password-stdin
 
-          make docker
+          make hub-router-docker
           docker tag docker.pkg.github.com/trustbloc/hub-router/hub-router:latest ${HUB_ROUTER_PKG}:${HUB_ROUTER_TAG}
           docker push ${HUB_ROUTER_PKG}:${HUB_ROUTER_TAG}
         env:
