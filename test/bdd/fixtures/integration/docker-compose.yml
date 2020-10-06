@@ -20,6 +20,7 @@ services:
       - ARIESD_OUTBOUND_TRANSPORT=${HTTP_SCHEME},${WS_SCHEME}
       - ARIESD_TRANSPORT_RETURN_ROUTE=${TRANSPORT_RETURN_OPTION_ALL}
       - ARIESD_AUTO_ACCEPT=true
+      - ARIESD_WEBHOOK_URL=http://wallet-webhook-mock.example.com:${WALLET_WEBHOOK_PORT}
       - TLS_CERT_FILE=/etc/tls/ec-pubCert.pem
       - TLS_KEY_FILE=/etc/tls/ec-key.pem
     ports:
@@ -32,6 +33,18 @@ services:
       hub-router_bdd_test:
         aliases:
           - wallet.mock.example.com
+
+  wallet-webhook-mock.example.com:
+    container_name: wallet-webhook-mock.example.com
+    image: ${MOCK_WEBHOOK_IMAGE}:${MOCK_WEBHOOK_IMAGE_TAG}
+    environment:
+      - WEBHOOK_PORT=${WALLET_WEBHOOK_PORT}
+    ports:
+      - ${WALLET_WEBHOOK_PORT}:${WALLET_WEBHOOK_PORT}
+    networks:
+      hub-router_bdd_test:
+        aliases:
+          - wallet-webhook-mock.example.com
 
   adapter-mock.example.com:
     container_name: adapter-mock.example.com

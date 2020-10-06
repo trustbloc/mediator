@@ -24,6 +24,7 @@ import (
 type Ctx interface {
 	Service(id string) (interface{}, error)
 	ServiceEndpoint() string
+	RouterEndpoint() string
 	StorageProvider() storage.Provider
 	ProtocolStateStorageProvider() storage.Provider
 	KMS() kms.KeyManager

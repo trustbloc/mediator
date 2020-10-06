@@ -74,6 +74,7 @@ type Operation struct {
 	mediator     aries.Mediator
 	messenger    service.Messenger
 	vdriRegistry vdri.Registry
+	endpoint     string
 }
 
 // New returns a new Operation.
@@ -102,6 +103,7 @@ func New(config *Config) (*Operation, error) {
 		mediator:     mediatorClient,
 		messenger:    config.AriesMessenger,
 		vdriRegistry: config.Aries.VDRIRegistry(),
+		endpoint:     config.Aries.RouterEndpoint(),
 	}
 
 	msgCh := make(chan service.DIDCommMsg, 1)
@@ -236,7 +238,7 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 	}
 
 	// create peer DID
-	newDidDoc, err := o.vdriRegistry.Create("peer", vdri.WithDefaultServiceEndpoint(""))
+	newDidDoc, err := o.vdriRegistry.Create("peer", vdri.WithServices(did.Service{ServiceEndpoint: o.endpoint}))
 	if err != nil {
 		return nil, fmt.Errorf("create new peer did : %w", err)
 	}
