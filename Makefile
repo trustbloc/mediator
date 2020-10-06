@@ -5,6 +5,7 @@
 # Namespace for the docker images
 DOCKER_OUTPUT_NS   ?= docker.pkg.github.com
 DOCKER_IMAGE_NAME ?= trustbloc/hub-router/hub-router
+MOCK_WEBHOOK_IMAGE_NAME ?= trustbloc/hub-router/mock-webhook
 
 # Tool commands (overridable)
 ALPINE_VER ?= 3.12
@@ -29,7 +30,7 @@ unit-test:
 	@scripts/check_unit.sh
 
 .PHONY: bdd-test
-bdd-test: clean test-keys docker
+bdd-test: clean test-keys hub-router-docker mock-webhook-docker
 	@scripts/check_integration.sh
 
 .PHONY: test-keys
@@ -40,8 +41,8 @@ test-keys: clean
 		--entrypoint "/opt/workspace/hub-router/scripts/generate_test_keys.sh" \
 		frapsoft/openssl
 
-.PHONY: docker
-docker:
+.PHONY: hub-router-docker
+hub-router-docker:
 	@echo "Building hub-router docker image"
 	@docker build -f ./images/hub-router/Dockerfile --no-cache \
 	   -t $(DOCKER_OUTPUT_NS)/$(DOCKER_IMAGE_NAME):latest \
@@ -53,6 +54,21 @@ hub-router:
 	@echo "Building hub-router"
 	@mkdir -p ./.build/bin
 	@cd cmd/hub-router && go build -o ../../.build/bin/hub-router main.go
+
+.PHONY: mock-webhook
+mock-webhook:
+	@echo "Building mock webhook server"
+	@mkdir -p ./build/bin
+	@go build -o ./build/bin/webhook-server test/mock/cmd/webhook/main.go
+
+.PHONY: mock-webhook-docker
+mock-webhook-docker:
+	@echo "Building mock webhook server docker image"
+	@docker build -f ./test/mock/images/webhook/Dockerfile --no-cache -t $(DOCKER_OUTPUT_NS)/$(MOCK_WEBHOOK_IMAGE_NAME):latest \
+	--build-arg GO_VER=$(GO_VER) \
+	--build-arg ALPINE_VER=$(ALPINE_VER) \
+	--build-arg GO_TAGS=$(GO_TAGS) \
+	--build-arg GOPROXY=$(GOPROXY) .
 
 .PHONY: clean
 clean:
