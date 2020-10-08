@@ -263,7 +263,10 @@ func TestDIDCommMsgListener(t *testing.T) {
 				dErr := msg.Decode(pMsg)
 				require.NoError(t, dErr)
 
-				didDoc, dErr := did.ParseDocument(pMsg.Data.DIDDoc)
+				docBytes, dErr := json.Marshal(pMsg.Data.DIDDoc)
+				require.NoError(t, dErr)
+
+				didDoc, dErr := did.ParseDocument(docBytes)
 				require.NoError(t, dErr)
 
 				require.Contains(t, didDoc.ID, "did:")
@@ -287,7 +290,7 @@ func TestDIDCommMsgListener(t *testing.T) {
 			Type:    createConnReq,
 			Purpose: []string{createConnReqPurpose},
 			Data: &CreateConnReqData{
-				DIDDoc: didDocBytes,
+				DIDDoc: json.RawMessage(didDocBytes),
 			},
 		})
 
@@ -315,7 +318,7 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 		require.Contains(t, err.Error(), "did document mandatory")
 	})
 
-	t.Run("invalid did doc", func(t *testing.T) {
+	t.Run("invalid did doc error#1", func(t *testing.T) {
 		c, err := New(config())
 		require.NoError(t, err)
 
@@ -330,6 +333,23 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 
 		_, err = c.handleCreateConnReq(msg)
 		require.Contains(t, err.Error(), "parse did doc")
+	})
+
+	t.Run("invalid did doc error#2", func(t *testing.T) {
+		c, err := New(config())
+		require.NoError(t, err)
+
+		msg := service.NewDIDCommMsgMap(CreateConnReq{
+			ID:      uuid.New().String(),
+			Type:    createConnReq,
+			Purpose: []string{createConnReqPurpose},
+			Data: &CreateConnReqData{
+				DIDDoc: make(chan bool),
+			},
+		})
+
+		_, err = c.handleCreateConnReq(msg)
+		require.Contains(t, err.Error(), "failed to read did document bytes")
 	})
 
 	t.Run("invalid did doc", func(t *testing.T) {
@@ -348,7 +368,7 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 			Type:    createConnReq,
 			Purpose: []string{createConnReqPurpose},
 			Data: &CreateConnReqData{
-				DIDDoc: didDocBytes,
+				DIDDoc: json.RawMessage(didDocBytes),
 			},
 		})
 
@@ -372,7 +392,7 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 			Type:    createConnReq,
 			Purpose: []string{createConnReqPurpose},
 			Data: &CreateConnReqData{
-				DIDDoc: didDocBytes,
+				DIDDoc: json.RawMessage(didDocBytes),
 			},
 		})
 

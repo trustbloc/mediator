@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package operation
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -232,7 +233,12 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 		return nil, errors.New("did document mandatory")
 	}
 
-	didDoc, err := did.ParseDocument(pMsg.Data.DIDDoc)
+	docBytes, err := json.Marshal(pMsg.Data.DIDDoc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read did document bytes : %w", err)
+	}
+
+	didDoc, err := did.ParseDocument(docBytes)
 	if err != nil {
 		return nil, fmt.Errorf("parse did doc : %w", err)
 	}
@@ -249,7 +255,7 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 		return nil, fmt.Errorf("create connection : %w", err)
 	}
 
-	docBytes, err := newDidDoc.JSONBytes()
+	newDocBytes, err := newDidDoc.JSONBytes()
 	if err != nil {
 		return nil, fmt.Errorf("marshal did doc : %w", err)
 	}
@@ -259,6 +265,6 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 		ID:      uuid.New().String(),
 		Type:    createConnResp,
 		Purpose: []string{createConnRespPurpose},
-		Data:    &CreateConnRespData{DIDDoc: docBytes},
+		Data:    &CreateConnRespData{DIDDoc: newDocBytes},
 	}), nil
 }

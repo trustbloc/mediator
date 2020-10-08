@@ -374,7 +374,7 @@ func (e *Steps) sendCreateConnReq(controllerURL string, didDocument *did.Doc) er
 		Type:    "https://trustbloc.github.io/blinded-routing/1.0/create-conn-req",
 		Purpose: []string{"create-conn-req"},
 		Data: &operation.CreateConnReqData{
-			DIDDoc: didDocJSON,
+			DIDDoc: json.RawMessage(didDocJSON),
 		},
 	}
 
