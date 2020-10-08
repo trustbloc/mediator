@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package operation
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/hyperledger/aries-framework-go/pkg/client/outofband"
@@ -32,7 +33,9 @@ type CreateConnReq struct {
 
 // CreateConnReqData model for data in CreateConnReq.
 type CreateConnReqData struct {
-	DIDDoc []byte `json:"thirdPartyDIDDoc"`
+	// TODO : use `json.RawMessage` here once below issue is resolved
+	// [https://github.com/hyperledger/aries-framework-go/issues/2217]
+	DIDDoc interface{} `json:"thirdPartyDIDDoc"`
 }
 
 // CreateConnResp model.
@@ -45,6 +48,6 @@ type CreateConnResp struct {
 
 // CreateConnRespData model for error data in CreateConnResp.
 type CreateConnRespData struct {
-	ErrorMsg string `json:"errorMsg"`
-	DIDDoc   []byte `json:"routerDIDDoc"`
+	ErrorMsg string          `json:"errorMsg"`
+	DIDDoc   json.RawMessage `json:"routerDIDDoc"`
 }
