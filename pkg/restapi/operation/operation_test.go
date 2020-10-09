@@ -318,7 +318,7 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 		require.Contains(t, err.Error(), "did document mandatory")
 	})
 
-	t.Run("invalid did doc error#1", func(t *testing.T) {
+	t.Run("invalid did doc error", func(t *testing.T) {
 		c, err := New(config())
 		require.NoError(t, err)
 
@@ -333,23 +333,6 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 
 		_, err = c.handleCreateConnReq(msg)
 		require.Contains(t, err.Error(), "parse did doc")
-	})
-
-	t.Run("invalid did doc error#2", func(t *testing.T) {
-		c, err := New(config())
-		require.NoError(t, err)
-
-		msg := service.NewDIDCommMsgMap(CreateConnReq{
-			ID:      uuid.New().String(),
-			Type:    createConnReq,
-			Purpose: []string{createConnReqPurpose},
-			Data: &CreateConnReqData{
-				DIDDoc: make(chan bool),
-			},
-		})
-
-		_, err = c.handleCreateConnReq(msg)
-		require.Contains(t, err.Error(), "failed to read did document bytes")
 	})
 
 	t.Run("invalid did doc", func(t *testing.T) {
