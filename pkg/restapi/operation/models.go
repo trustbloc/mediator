@@ -33,9 +33,7 @@ type CreateConnReq struct {
 
 // CreateConnReqData model for data in CreateConnReq.
 type CreateConnReqData struct {
-	// TODO : use `json.RawMessage` here once below issue is resolved
-	// [https://github.com/hyperledger/aries-framework-go/issues/2217]
-	DIDDoc interface{} `json:"thirdPartyDIDDoc"`
+	DIDDoc json.RawMessage `json:"thirdPartyDIDDoc"`
 }
 
 // CreateConnResp model.

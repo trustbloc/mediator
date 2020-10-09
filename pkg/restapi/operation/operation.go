@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package operation
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -233,12 +232,7 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 		return nil, errors.New("did document mandatory")
 	}
 
-	docBytes, err := json.Marshal(pMsg.Data.DIDDoc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read did document bytes : %w", err)
-	}
-
-	didDoc, err := did.ParseDocument(docBytes)
+	didDoc, err := did.ParseDocument(pMsg.Data.DIDDoc)
 	if err != nil {
 		return nil, fmt.Errorf("parse did doc : %w", err)
 	}

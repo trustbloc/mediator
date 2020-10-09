@@ -12,7 +12,7 @@ require (
 	github.com/fsouza/go-dockerclient v1.6.5
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
-	github.com/hyperledger/aries-framework-go v0.1.5-0.20201002141934-47a2ea3afd67
+	github.com/hyperledger/aries-framework-go v0.1.5-0.20201009073544-dcb7f47ab8db
 	github.com/trustbloc/edge-core v0.1.5-0.20200916124536-c32454a16108
 	github.com/trustbloc/hub-router v0.0.0-00010101000000-000000000000
 )
