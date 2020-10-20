@@ -13,8 +13,7 @@ services:
     environment:
       - ARIESD_API_HOST=${WALLET_AGENT_HOST}:${WALLET_AGENT_API_PORT}
       - ARIESD_DEFAULT_LABEL=aries-wallet
-      - ARIESD_DATABASE_TYPE=mysql
-      - ARIESD_DATABASE_URL=aries:aries-secret-pw@tcp(mysql:3306)/
+      - ARIESD_DATABASE_TYPE=leveldb
       - ARIESD_DATABASE_PREFIX=aries_wallet
       - ARIESD_DATABASE_TIMEOUT=60
       - ARIESD_OUTBOUND_TRANSPORT=${HTTP_SCHEME},${WS_SCHEME}
@@ -55,8 +54,7 @@ services:
       - ARIESD_INBOUND_HOST_EXTERNAL=${HTTP_SCHEME}@https://adapter-mock.example.com:${ADAPTER_AGENT_DIDCOMM_HTTP_PORT}
       - ARIESD_AUTO_ACCEPT=true
       - ARIESD_DEFAULT_LABEL=adapter-agent
-      - ARIESD_DATABASE_TYPE=mysql
-      - ARIESD_DATABASE_URL=aries:aries-secret-pw@tcp(mysql:3306)/
+      - ARIESD_DATABASE_TYPE=leveldb
       - ARIESD_DATABASE_PREFIX=aries_adapter
       - ARIESD_DATABASE_TIMEOUT=60
       - TLS_CERT_FILE=/etc/tls/ec-pubCert.pem

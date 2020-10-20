@@ -24,7 +24,7 @@ import (
 	didexcmd "github.com/hyperledger/aries-framework-go/pkg/controller/command/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/controller/command/messaging"
 	oobcmd "github.com/hyperledger/aries-framework-go/pkg/controller/command/outofband"
-	vdricmd "github.com/hyperledger/aries-framework-go/pkg/controller/command/vdri"
+	vdrcmd "github.com/hyperledger/aries-framework-go/pkg/controller/command/vdr"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
 	"github.com/trustbloc/edge-core/pkg/log"
@@ -56,10 +56,10 @@ const (
 	unregisterMsgService  = msgServiceOperationID + "/unregister-service"
 	sendNewMsg            = msgServiceOperationID + "/send"
 
-	// vdri paths.
-	vdriOperationID = "/vdri"
-	vdriDIDPath     = vdriOperationID + "/did"
-	resolveDIDPath  = vdriDIDPath + "/resolve/%s"
+	// vdr paths.
+	vdrOperationID = "/vdr"
+	vdrDIDPath     = vdrOperationID + "/did"
+	resolveDIDPath = vdrDIDPath + "/resolve/%s"
 
 	// webhook.
 	checkForTopics               = "/checktopics"
@@ -472,7 +472,7 @@ func (e *Steps) pullMsgFromWebhookURL(webhookURL, topic string) (*service.DIDCom
 func (e *Steps) resolveDID(controller, didID string) (*did.Doc, error) {
 	destination := fmt.Sprintf(controller+resolveDIDPath, base64.StdEncoding.EncodeToString([]byte(didID)))
 
-	var resp vdricmd.Document
+	var resp vdrcmd.Document
 
 	err := bddutil.SendHTTPReq(http.MethodGet, destination, nil, &resp, e.bddContext.TLSConfig)
 	if err != nil {

@@ -25,7 +25,7 @@ import (
 	mockdiddoc "github.com/hyperledger/aries-framework-go/pkg/mock/diddoc"
 	mockprovider "github.com/hyperledger/aries-framework-go/pkg/mock/provider"
 	mockstore "github.com/hyperledger/aries-framework-go/pkg/mock/storage"
-	mockvdri "github.com/hyperledger/aries-framework-go/pkg/mock/vdri"
+	mockvdri "github.com/hyperledger/aries-framework-go/pkg/mock/vdr"
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/hub-router/pkg/internal/mock/didexchange"
@@ -339,7 +339,7 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 		c, err := New(config())
 		require.NoError(t, err)
 
-		c.vdriRegistry = &mockvdri.MockVDRIRegistry{
+		c.vdriRegistry = &mockvdri.MockVDRegistry{
 			CreateErr: errors.New("did create error"),
 		}
 

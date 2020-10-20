@@ -19,7 +19,7 @@ import (
 	didexdsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/didexchange"
 	mediatordsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/mediator"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
-	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdri"
+	vdrapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
 	"github.com/trustbloc/edge-core/pkg/log"
 	"github.com/trustbloc/edge-core/pkg/storage"
 
@@ -73,7 +73,7 @@ type Operation struct {
 	didExchange  aries.DIDExchange
 	mediator     aries.Mediator
 	messenger    service.Messenger
-	vdriRegistry vdri.Registry
+	vdriRegistry vdrapi.Registry
 	endpoint     string
 }
 
@@ -102,7 +102,7 @@ func New(config *Config) (*Operation, error) {
 		didExchange:  didExchangeClient,
 		mediator:     mediatorClient,
 		messenger:    config.AriesMessenger,
-		vdriRegistry: config.Aries.VDRIRegistry(),
+		vdriRegistry: config.Aries.VDRegistry(),
 		endpoint:     config.Aries.RouterEndpoint(),
 	}
 
@@ -238,7 +238,7 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 	}
 
 	// create peer DID
-	newDidDoc, err := o.vdriRegistry.Create("peer", vdri.WithServices(did.Service{ServiceEndpoint: o.endpoint}))
+	newDidDoc, err := o.vdriRegistry.Create("peer", vdrapi.WithServices(did.Service{ServiceEndpoint: o.endpoint}))
 	if err != nil {
 		return nil, fmt.Errorf("create new peer did : %w", err)
 	}

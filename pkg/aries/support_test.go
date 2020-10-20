@@ -18,7 +18,7 @@ import (
 	mockkms "github.com/hyperledger/aries-framework-go/pkg/mock/kms"
 	mockprovider "github.com/hyperledger/aries-framework-go/pkg/mock/provider"
 	mockstore "github.com/hyperledger/aries-framework-go/pkg/mock/storage"
-	mockvdri "github.com/hyperledger/aries-framework-go/pkg/mock/vdri"
+	mockvdr "github.com/hyperledger/aries-framework-go/pkg/mock/vdr"
 
 	mockoutofband "github.com/trustbloc/hub-router/pkg/internal/mock/outofband"
 )
@@ -35,6 +35,6 @@ func getAriesCtx() Ctx {
 		KMSValue:             &mockkms.KeyManager{ImportPrivateKeyErr: fmt.Errorf("error import priv key")},
 		CryptoValue:          &mockcrypto.Crypto{},
 		ServiceEndpointValue: "endpoint",
-		VDRIRegistryValue:    &mockvdri.MockVDRIRegistry{},
+		VDRegistryValue:      &mockvdr.MockVDRegistry{},
 	}
 }
