@@ -15,7 +15,7 @@ import (
 	ariescrypto "github.com/hyperledger/aries-framework-go/pkg/crypto"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
-	vdriapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdri"
+	vdrapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
 	"github.com/hyperledger/aries-framework-go/pkg/kms"
 	"github.com/hyperledger/aries-framework-go/pkg/storage"
 )
@@ -28,7 +28,7 @@ type Ctx interface {
 	StorageProvider() storage.Provider
 	ProtocolStateStorageProvider() storage.Provider
 	KMS() kms.KeyManager
-	VDRIRegistry() vdriapi.Registry
+	VDRegistry() vdrapi.Registry
 	Crypto() ariescrypto.Crypto
 }
 
