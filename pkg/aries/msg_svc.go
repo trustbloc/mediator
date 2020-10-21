@@ -11,17 +11,15 @@ import "github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 // MsgService msg service implementation.
 type MsgService struct {
 	svcName string
-	purpose []string
 	msgType string
 	msgCh   chan service.DIDCommMsg
 }
 
 // NewMsgSvc new msg service.
-func NewMsgSvc(name, msgType, purpose string, msgCh chan service.DIDCommMsg) *MsgService {
+func NewMsgSvc(name, msgType string, msgCh chan service.DIDCommMsg) *MsgService {
 	return &MsgService{
 		svcName: name,
 		msgType: msgType,
-		purpose: []string{purpose},
 		msgCh:   msgCh,
 	}
 }
@@ -32,28 +30,8 @@ func (m *MsgService) Name() string {
 }
 
 // Accept validates whether the service handles msgType and purpose.
-func (m *MsgService) Accept(msgType string, purpose []string) bool {
-	purposeMatched, typeMatched := len(m.purpose) == 0, m.msgType == ""
-
-	if purposeMatched && typeMatched {
-		return false
-	}
-
-	for _, purposeCriteria := range m.purpose {
-		for _, msgPurpose := range purpose {
-			if purposeCriteria == msgPurpose {
-				purposeMatched = true
-
-				break
-			}
-		}
-	}
-
-	if m.msgType == msgType {
-		typeMatched = true
-	}
-
-	return purposeMatched && typeMatched
+func (m *MsgService) Accept(msgType string, _ []string) bool {
+	return m.msgType == msgType
 }
 
 // HandleInbound handles inbound didcomm msg.

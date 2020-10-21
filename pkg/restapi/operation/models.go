@@ -33,7 +33,7 @@ type CreateConnReq struct {
 
 // CreateConnReqData model for data in CreateConnReq.
 type CreateConnReqData struct {
-	DIDDoc json.RawMessage `json:"thirdPartyDIDDoc"`
+	DIDDoc json.RawMessage `json:"didDoc"`
 }
 
 // CreateConnResp model.
@@ -47,5 +47,5 @@ type CreateConnResp struct {
 // CreateConnRespData model for error data in CreateConnResp.
 type CreateConnRespData struct {
 	ErrorMsg string          `json:"errorMsg"`
-	DIDDoc   json.RawMessage `json:"routerDIDDoc"`
+	DIDDoc   json.RawMessage `json:"didDoc"`
 }
