@@ -36,11 +36,9 @@ const (
 
 // Msg svc constants.
 const (
-	msgTypeBaseURI        = "https://trustbloc.github.io/blinded-routing/1.0"
-	createConnReq         = msgTypeBaseURI + "/create-conn-req"
-	createConnResp        = msgTypeBaseURI + "/create-conn-resp"
-	createConnReqPurpose  = "create-conn-req"
-	createConnRespPurpose = "create-conn-resp"
+	msgTypeBaseURI = "https://trustbloc.dev/blinded-routing/1.0"
+	createConnReq  = msgTypeBaseURI + "/create-conn-req"
+	createConnResp = msgTypeBaseURI + "/create-conn-resp"
 )
 
 var logger = log.New("hub-router/operations")
@@ -108,7 +106,7 @@ func New(config *Config) (*Operation, error) {
 
 	msgCh := make(chan service.DIDCommMsg, 1)
 
-	msgSvc := aries.NewMsgSvc("create-connection", createConnReq, createConnReqPurpose, msgCh)
+	msgSvc := aries.NewMsgSvc("create-connection", createConnReq, msgCh)
 
 	err = config.MsgRegistrar.Register(msgSvc)
 	if err != nil {
@@ -199,10 +197,9 @@ func (o *Operation) didCommMsgListener(ch <-chan service.DIDCommMsg) {
 
 		if err != nil {
 			msgMap = service.NewDIDCommMsgMap(&CreateConnResp{
-				ID:      uuid.New().String(),
-				Type:    createConnResp,
-				Purpose: []string{createConnRespPurpose},
-				Data:    &CreateConnRespData{ErrorMsg: err.Error()},
+				ID:   uuid.New().String(),
+				Type: createConnResp,
+				Data: &CreateConnRespData{ErrorMsg: err.Error()},
 			})
 
 			logger.Errorf("msgType=[%s] id=[%s] errMsg=[%s]", msg.Type(), msg.ID(), err.Error())
@@ -256,9 +253,8 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 
 	// send router did doc
 	return service.NewDIDCommMsgMap(&CreateConnResp{
-		ID:      uuid.New().String(),
-		Type:    createConnResp,
-		Purpose: []string{createConnRespPurpose},
-		Data:    &CreateConnRespData{DIDDoc: newDocBytes},
+		ID:   uuid.New().String(),
+		Type: createConnResp,
+		Data: &CreateConnRespData{DIDDoc: newDocBytes},
 	}), nil
 }

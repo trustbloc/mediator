@@ -271,7 +271,6 @@ func TestDIDCommMsgListener(t *testing.T) {
 
 				require.Contains(t, didDoc.ID, "did:")
 				require.Equal(t, pMsg.Type, createConnResp)
-				require.Equal(t, pMsg.Purpose, []string{createConnRespPurpose})
 
 				done <- struct{}{}
 
@@ -286,9 +285,8 @@ func TestDIDCommMsgListener(t *testing.T) {
 		require.NoError(t, err)
 
 		msgCh <- service.NewDIDCommMsgMap(CreateConnReq{
-			ID:      uuid.New().String(),
-			Type:    createConnReq,
-			Purpose: []string{createConnReqPurpose},
+			ID:   uuid.New().String(),
+			Type: createConnReq,
 			Data: &CreateConnReqData{
 				DIDDoc: json.RawMessage(didDocBytes),
 			},
@@ -308,10 +306,9 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 		require.NoError(t, err)
 
 		msg := service.NewDIDCommMsgMap(CreateConnReq{
-			ID:      uuid.New().String(),
-			Type:    createConnReq,
-			Purpose: []string{createConnReqPurpose},
-			Data:    &CreateConnReqData{},
+			ID:   uuid.New().String(),
+			Type: createConnReq,
+			Data: &CreateConnReqData{},
 		})
 
 		_, err = c.handleCreateConnReq(msg)
@@ -323,9 +320,8 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 		require.NoError(t, err)
 
 		msg := service.NewDIDCommMsgMap(CreateConnReq{
-			ID:      uuid.New().String(),
-			Type:    createConnReq,
-			Purpose: []string{createConnReqPurpose},
+			ID:   uuid.New().String(),
+			Type: createConnReq,
 			Data: &CreateConnReqData{
 				DIDDoc: []byte("invalid-diddoc"),
 			},
@@ -347,9 +343,8 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 		require.NoError(t, err)
 
 		msg := service.NewDIDCommMsgMap(CreateConnReq{
-			ID:      uuid.New().String(),
-			Type:    createConnReq,
-			Purpose: []string{createConnReqPurpose},
+			ID:   uuid.New().String(),
+			Type: createConnReq,
 			Data: &CreateConnReqData{
 				DIDDoc: json.RawMessage(didDocBytes),
 			},
@@ -371,9 +366,8 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 		require.NoError(t, err)
 
 		msg := service.NewDIDCommMsgMap(CreateConnReq{
-			ID:      uuid.New().String(),
-			Type:    createConnReq,
-			Purpose: []string{createConnReqPurpose},
+			ID:   uuid.New().String(),
+			Type: createConnReq,
 			Data: &CreateConnReqData{
 				DIDDoc: json.RawMessage(didDocBytes),
 			},

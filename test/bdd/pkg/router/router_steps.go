@@ -370,9 +370,8 @@ func (e *Steps) sendCreateConnReq(controllerURL string, didDocument *did.Doc) er
 	}
 
 	msg := &operation.CreateConnReq{
-		ID:      uuid.New().String(),
-		Type:    "https://trustbloc.github.io/blinded-routing/1.0/create-conn-req",
-		Purpose: []string{"create-conn-req"},
+		ID:   uuid.New().String(),
+		Type: "https://trustbloc.dev/blinded-routing/1.0/create-conn-req",
 		Data: &operation.CreateConnReqData{
 			DIDDoc: json.RawMessage(didDocJSON),
 		},
@@ -536,9 +535,8 @@ func (e *Steps) registerCreateConnMsgServices(controllerURL, msgSvcName string) 
 
 	// register create conn msg service
 	params := messaging.RegisterMsgSvcArgs{
-		Name:    msgSvcName,
-		Type:    "https://trustbloc.github.io/blinded-routing/1.0/create-conn-resp",
-		Purpose: []string{"create-conn-resp"},
+		Name: msgSvcName,
+		Type: "https://trustbloc.dev/blinded-routing/1.0/create-conn-resp",
 	}
 
 	reqBytes, err := json.Marshal(params)
