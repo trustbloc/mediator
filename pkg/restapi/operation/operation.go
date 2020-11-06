@@ -225,7 +225,7 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 	}
 
 	// get the peerDID from the request
-	if pMsg.Data == nil || pMsg.Data.DIDDoc == nil {
+	if pMsg.Data == nil || pMsg.Data.DIDDoc == nil || len(pMsg.Data.DIDDoc) == 0 {
 		return nil, errors.New("did document mandatory")
 	}
 
