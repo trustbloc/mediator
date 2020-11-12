@@ -197,6 +197,137 @@ func TestDIDCommListener(t *testing.T) {
 	})
 }
 
+func TestDIDCommStateMsgListener(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		c, err := New(config())
+		require.NoError(t, err)
+
+		done := make(chan struct{})
+
+		c.messenger = &messenger.MockMessenger{
+			SendFunc: func(msg service.DIDCommMsgMap, myDID, theirDID string) error {
+				pMsg := &DIDCommMsg{}
+				err = msg.Decode(pMsg)
+				require.NoError(t, err)
+
+				done <- struct{}{}
+
+				return nil
+			},
+		}
+		c.didExchange = &didexchange.MockClient{}
+
+		msgCh := make(chan service.StateMsg, 1)
+		go c.stateMsgHandler(msgCh)
+
+		msgCh <- service.StateMsg{
+			Type:         service.PostState,
+			ProtocolName: didexdsvc.DIDExchange,
+			StateID:      didexdsvc.StateIDCompleted,
+			Properties: &didexchangeEvent{
+				connID: uuid.New().String(),
+			},
+		}
+
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			require.Fail(t, "tests are not validated due to timeout")
+		}
+	})
+
+	t.Run("ignore pre state", func(t *testing.T) {
+		c, err := New(config())
+		require.NoError(t, err)
+
+		msg := service.StateMsg{
+			Type:         service.PreState,
+			ProtocolName: didexdsvc.DIDExchange,
+			StateID:      didexdsvc.StateIDCompleted,
+			Properties: &didexchangeEvent{
+				connID: uuid.New().String(),
+			},
+		}
+
+		err = c.hanlDIDExStateMsg(msg)
+		require.NoError(t, err)
+	})
+
+	t.Run("send message error", func(t *testing.T) {
+		c, err := New(config())
+		require.NoError(t, err)
+
+		c.messenger = &messenger.MockMessenger{
+			SendFunc: func(msg service.DIDCommMsgMap, myDID, theirDID string) error {
+				return errors.New("send error")
+			},
+		}
+		c.didExchange = &didexchange.MockClient{}
+
+		msg := service.StateMsg{
+			Type:         service.PostState,
+			ProtocolName: didexdsvc.DIDExchange,
+			StateID:      didexdsvc.StateIDCompleted,
+			Properties: &didexchangeEvent{
+				connID: uuid.New().String(),
+			},
+		}
+
+		err = c.hanlDIDExStateMsg(msg)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "send didex state complete msg")
+	})
+
+	t.Run("cast to didex event error", func(t *testing.T) {
+		c, err := New(config())
+		require.NoError(t, err)
+
+		c.messenger = &messenger.MockMessenger{
+			SendFunc: func(msg service.DIDCommMsgMap, myDID, theirDID string) error {
+				return errors.New("send error")
+			},
+		}
+		c.didExchange = &didexchange.MockClient{}
+
+		msg := service.StateMsg{
+			Type:         service.PostState,
+			ProtocolName: didexdsvc.DIDExchange,
+			StateID:      didexdsvc.StateIDCompleted,
+		}
+
+		err = c.hanlDIDExStateMsg(msg)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to cast didexchange event properties")
+	})
+
+	t.Run("get connection error", func(t *testing.T) {
+		c, err := New(config())
+		require.NoError(t, err)
+
+		c.messenger = &messenger.MockMessenger{
+			SendFunc: func(msg service.DIDCommMsgMap, myDID, theirDID string) error {
+				return errors.New("send error")
+			},
+		}
+		c.didExchange = &didexchange.MockClient{
+			GetConnectionErr: errors.New("get conn error"),
+		}
+
+		msg := service.StateMsg{
+			Type:         service.PostState,
+			ProtocolName: didexdsvc.DIDExchange,
+			StateID:      didexdsvc.StateIDCompleted,
+			Properties: &didexchangeEvent{
+				connID: uuid.New().String(),
+			},
+		}
+
+		err = c.hanlDIDExStateMsg(msg)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "get connection for id=")
+	})
+}
+
 func TestDIDCommMsgListener(t *testing.T) {
 	t.Run("unsupported message type", func(t *testing.T) {
 		c, err := New(config())

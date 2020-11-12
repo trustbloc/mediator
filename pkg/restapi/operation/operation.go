@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hyperledger/aries-framework-go/pkg/client/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/client/outofband"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/messaging/msghandler"
@@ -36,9 +37,11 @@ const (
 
 // Msg svc constants.
 const (
-	msgTypeBaseURI = "https://trustbloc.dev/blinded-routing/1.0"
-	createConnReq  = msgTypeBaseURI + "/create-conn-req"
-	createConnResp = msgTypeBaseURI + "/create-conn-resp"
+	msgTypeBaseURI    = "https://trustbloc.dev"
+	blindedRoutingURI = msgTypeBaseURI + "/blinded-routing/1.0"
+	createConnReq     = blindedRoutingURI + "/create-conn-req"
+	createConnResp    = blindedRoutingURI + "/create-conn-resp"
+	didExStateComp    = msgTypeBaseURI + "/didexchange/1.0/state-complete"
 )
 
 var logger = log.New("hub-router/operations")
@@ -78,6 +81,7 @@ type Operation struct {
 // New returns a new Operation.
 func New(config *Config) (*Operation, error) {
 	actionCh := make(chan service.DIDCommAction, 1)
+	stateMsgCh := make(chan service.StateMsg, 1)
 
 	oobClient, err := aries.CreateOutofbandClient(config.Aries)
 	if err != nil {
@@ -89,7 +93,7 @@ func New(config *Config) (*Operation, error) {
 		return nil, fmt.Errorf("mediator client: %w", err)
 	}
 
-	didExchangeClient, err := aries.CreateDIDExchangeClient(config.Aries, actionCh)
+	didExchangeClient, err := aries.CreateDIDExchangeClient(config.Aries, actionCh, stateMsgCh)
 	if err != nil {
 		return nil, fmt.Errorf("didexchange client: %w", err)
 	}
@@ -116,6 +120,8 @@ func New(config *Config) (*Operation, error) {
 	go o.didCommActionListener(actionCh)
 
 	go o.didCommMsgListener(msgCh)
+
+	go o.stateMsgHandler(stateMsgCh)
 
 	return o, nil
 }
@@ -257,4 +263,51 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 		Type: createConnResp,
 		Data: &CreateConnRespData{DIDDoc: newDocBytes},
 	}), nil
+}
+
+func (o *Operation) stateMsgHandler(stateMsgCh chan service.StateMsg) {
+	for msg := range stateMsgCh {
+		switch msg.ProtocolName {
+		case didexdsvc.DIDExchange:
+			err := o.hanlDIDExStateMsg(msg)
+			if err != nil {
+				logger.Errorf("failed to handle did exchange state message : %s", err.Error())
+			}
+		default:
+			logger.Warnf("failed to cast didexchange event properties")
+		}
+	}
+}
+
+func (o *Operation) hanlDIDExStateMsg(msg service.StateMsg) error {
+	if msg.Type != service.PostState || msg.StateID != didexdsvc.StateIDCompleted {
+		logger.Debugf("handle did exchange state msg : stateMsgType=%s stateID=%s",
+			service.PostState, didexdsvc.StateIDCompleted)
+
+		return nil
+	}
+
+	var event didexchange.Event
+
+	switch p := msg.Properties.(type) {
+	case didexchange.Event:
+		event = p
+	default:
+		return errors.New("failed to cast didexchange event properties")
+	}
+
+	conn, err := o.didExchange.GetConnection(event.ConnectionID())
+	if err != nil {
+		return fmt.Errorf("get connection for id=%s : %w", event.ConnectionID(), err)
+	}
+
+	err = o.messenger.Send(service.NewDIDCommMsgMap(&DIDCommMsg{
+		ID:   uuid.New().String(),
+		Type: didExStateComp,
+	}), conn.MyDID, conn.TheirDID)
+	if err != nil {
+		return fmt.Errorf("send didex state complete msg : %w", err)
+	}
+
+	return nil
 }

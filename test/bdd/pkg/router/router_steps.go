@@ -134,12 +134,24 @@ func (e *Steps) invitation() error {
 }
 
 func (e *Steps) connectWithRouter() error {
+	msgSvcName := uuid.New().String()
+
+	err := e.registerMsgServices(walletAPIURL, msgSvcName, "https://trustbloc.dev/didexchange/1.0/state-complete")
+	if err != nil {
+		return err
+	}
+
 	connID, err := e.connect(e.routerInvitationStr, "")
 	if err != nil {
 		return fmt.Errorf("connect with router : %w", err)
 	}
 
 	e.walletRouterConnID = connID
+
+	err = e.getDIDExStateCompResp(walletWebhookURL, msgSvcName)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -272,7 +284,7 @@ func (e *Steps) establishConnReq() error {
 	msgSvcName := uuid.New().String()
 
 	// register for message service
-	err := e.registerCreateConnMsgServices(walletAPIURL, msgSvcName)
+	err := e.registerMsgServices(walletAPIURL, msgSvcName, "https://trustbloc.dev/blinded-routing/1.0/create-conn-resp")
 	if err != nil {
 		return err
 	}
@@ -396,6 +408,15 @@ func (e *Steps) sendCreateConnReq(controllerURL string, didDocument *did.Doc) er
 	err = bddutil.SendHTTPReq(http.MethodPost, controllerURL+sendNewMsg, reqBytes, nil, e.bddContext.TLSConfig)
 	if err != nil {
 		return fmt.Errorf("failed to send message : %w", err)
+	}
+
+	return nil
+}
+
+func (e *Steps) getDIDExStateCompResp(controllerURL, msgSvcName string) error {
+	_, err := e.pullMsgFromWebhookURL(controllerURL, msgSvcName)
+	if err != nil {
+		return fmt.Errorf("failed to pull incoming message from webhook : %w", err)
 	}
 
 	return nil
@@ -526,7 +547,7 @@ func (e *Steps) createConnection(controllerURL, myDID, label string, theirDID *d
 	return resp.ID, nil
 }
 
-func (e *Steps) registerCreateConnMsgServices(controllerURL, msgSvcName string) error {
+func (e *Steps) registerMsgServices(controllerURL, msgSvcName, msgType string) error {
 	// unregister all the msg services (to clear older data)
 	err := e.unregisterAllMsgServices(controllerURL)
 	if err != nil {
@@ -536,7 +557,7 @@ func (e *Steps) registerCreateConnMsgServices(controllerURL, msgSvcName string) 
 	// register create conn msg service
 	params := messaging.RegisterMsgSvcArgs{
 		Name: msgSvcName,
-		Type: "https://trustbloc.dev/blinded-routing/1.0/create-conn-resp",
+		Type: msgType,
 	}
 
 	reqBytes, err := json.Marshal(params)

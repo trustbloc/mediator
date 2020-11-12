@@ -37,13 +37,13 @@ func TestCreateOutofbandClient(t *testing.T) {
 
 func TestCreateDIDExchangeClient(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		c, err := CreateDIDExchangeClient(getAriesCtx(), nil)
+		c, err := CreateDIDExchangeClient(getAriesCtx(), nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, c)
 	})
 
 	t.Run("client creation error", func(t *testing.T) {
-		c, err := CreateDIDExchangeClient(&mockprovider.Provider{}, nil)
+		c, err := CreateDIDExchangeClient(&mockprovider.Provider{}, nil, nil)
 		require.Nil(t, c)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "create didexchange client")
@@ -59,10 +59,26 @@ func TestCreateDIDExchangeClient(t *testing.T) {
 			},
 		}
 
-		c, err := CreateDIDExchangeClient(ctx, make(chan service.DIDCommAction))
+		c, err := CreateDIDExchangeClient(ctx, make(chan service.DIDCommAction), nil)
 		require.Nil(t, c)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "register didexchange action event")
+	})
+
+	t.Run("msg event registration error", func(t *testing.T) {
+		ctx := &mockprovider.Provider{
+			ProtocolStateStorageProviderValue: mockstore.NewMockStoreProvider(),
+			StorageProviderValue:              mockstore.NewMockStoreProvider(),
+			ServiceMap: map[string]interface{}{
+				didexchange.DIDExchange: &mocksvc.MockDIDExchangeSvc{RegisterMsgEventErr: errors.New("reg msg error")},
+				mediator.Coordination:   &mockroute.MockMediatorSvc{},
+			},
+		}
+
+		c, err := CreateDIDExchangeClient(ctx, make(chan service.DIDCommAction), nil)
+		require.Nil(t, c)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "register didexchange message event")
 	})
 }
 
