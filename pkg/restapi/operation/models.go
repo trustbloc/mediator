@@ -49,3 +49,9 @@ type CreateConnRespData struct {
 	ErrorMsg string          `json:"errorMsg"`
 	DIDDoc   json.RawMessage `json:"didDoc"`
 }
+
+// DIDCommMsg model.
+type DIDCommMsg struct {
+	ID   string `json:"@id"`
+	Type string `json:"@type"`
+}

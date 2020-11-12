@@ -11,12 +11,14 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/client/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
+	"github.com/hyperledger/aries-framework-go/pkg/store/connection"
 )
 
 // MockClient is a mock didexchange.MockClient used in tests.
 type MockClient struct {
-	ActionEventFunc func(chan<- service.DIDCommAction) error
-	CreateConnErr   error
+	ActionEventFunc  func(chan<- service.DIDCommAction) error
+	CreateConnErr    error
+	GetConnectionErr error
 }
 
 // RegisterActionEvent registers the action event channel.
@@ -35,4 +37,13 @@ func (c *MockClient) CreateConnection(_ string, _ *did.Doc, _ ...didexchange.Con
 	}
 
 	return uuid.New().String(), nil
+}
+
+// GetConnection fetches connection record based on connID.
+func (c *MockClient) GetConnection(connectionID string) (*didexchange.Connection, error) {
+	if c.GetConnectionErr != nil {
+		return nil, c.GetConnectionErr
+	}
+
+	return &didexchange.Connection{Record: &connection.Record{ConnectionID: connectionID}}, nil
 }

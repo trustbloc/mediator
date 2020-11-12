@@ -41,6 +41,7 @@ type OutOfBand interface {
 type DIDExchange interface {
 	CreateConnection(myDID string, theirDID *did.Doc, options ...didexchange.ConnectionOption) (string, error)
 	RegisterActionEvent(chan<- service.DIDCommAction) error
+	GetConnection(connectionID string) (*didexchange.Connection, error)
 }
 
 // Mediator client.
@@ -59,7 +60,8 @@ func CreateOutofbandClient(ariesCtx outofband.Provider) (*outofband.Client, erro
 }
 
 // CreateDIDExchangeClient util function to create did exchange client and registers for action event.
-func CreateDIDExchangeClient(ctx Ctx, actionCh chan service.DIDCommAction) (DIDExchange, error) {
+func CreateDIDExchangeClient(ctx Ctx, actionCh chan service.DIDCommAction,
+	stateMsgCh chan service.StateMsg) (DIDExchange, error) {
 	didExClient, err := didexchange.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("create didexchange client : %w", err)
@@ -68,6 +70,11 @@ func CreateDIDExchangeClient(ctx Ctx, actionCh chan service.DIDCommAction) (DIDE
 	err = didExClient.RegisterActionEvent(actionCh)
 	if err != nil {
 		return nil, fmt.Errorf("register didexchange action event : %w", err)
+	}
+
+	err = didExClient.RegisterMsgEvent(stateMsgCh)
+	if err != nil {
+		return nil, fmt.Errorf("register didexchange message event : %w", err)
 	}
 
 	return didExClient, nil
