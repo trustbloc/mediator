@@ -12,7 +12,7 @@ require (
 	github.com/cucumber/godog v0.9.0
 	github.com/fsouza/go-dockerclient v1.6.5
 	github.com/google/uuid v1.1.2
-	github.com/hyperledger/aries-framework-go v0.1.5-0.20201110161050-249e1c428734
+	github.com/hyperledger/aries-framework-go v0.1.5-0.20201124194436-a37f1c10fd4e
 	github.com/opencontainers/runc v1.0.0-rc9 // indirect
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/trustbloc/edge-core v0.1.5-0.20201106164919-76ecfeca954f
