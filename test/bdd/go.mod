@@ -12,12 +12,11 @@ require (
 	github.com/cucumber/godog v0.9.0
 	github.com/fsouza/go-dockerclient v1.6.5
 	github.com/google/uuid v1.1.2
-	github.com/hyperledger/aries-framework-go v0.1.5-0.20201124194436-a37f1c10fd4e
+	github.com/hyperledger/aries-framework-go v0.1.5-0.20201204175718-47143e0eada8
 	github.com/opencontainers/runc v1.0.0-rc9 // indirect
 	github.com/sirupsen/logrus v1.7.0 // indirect
-	github.com/trustbloc/edge-core v0.1.5-0.20201106164919-76ecfeca954f
+	github.com/trustbloc/edge-core v0.1.5-0.20201203211818-a61e670a310e
 	github.com/trustbloc/hub-router v0.0.0-00010101000000-000000000000
-	golang.org/x/net v0.0.0-20201009032441-dbdefad45b89 // indirect
 	gotest.tools/v3 v3.0.3 // indirect
 )
 

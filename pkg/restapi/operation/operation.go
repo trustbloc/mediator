@@ -211,7 +211,7 @@ func (o *Operation) didCommMsgListener(ch <-chan service.DIDCommMsg) {
 			logger.Errorf("msgType=[%s] id=[%s] errMsg=[%s]", msg.Type(), msg.ID(), err.Error())
 		}
 
-		err = o.messenger.ReplyTo(msg.ID(), msgMap)
+		err = o.messenger.ReplyTo(msg.ID(), msgMap) // nolint:staticcheck //issue#47
 		if err != nil {
 			logger.Errorf("sendReply : msgType=[%s] id=[%s] errMsg=[%s]", msg.Type(), msg.ID(), err.Error())
 
