@@ -48,15 +48,7 @@ jobs:
       - template: azp-dependencies.yml
       - checkout: self
       - bash: |
-          function logout {
-            docker logout
-          }
-          trap logout EXIT
-          echo $DOCKER_PASSWORD | docker login docker.pkg.github.com --username $DOCKER_USER --password-stdin
           make bdd-test
-        env:
-          DOCKER_USER: $(DOCKER_USER)
-          DOCKER_PASSWORD: $(DOCKER_PASSWORD)
         displayName: Run BDD tests
 
   - job: Publish
@@ -77,10 +69,10 @@ jobs:
           }
           trap logout EXIT
           source ci/version_var.sh
-          echo $DOCKER_PASSWORD | docker login docker.pkg.github.com --username $DOCKER_USER --password-stdin
+          echo $DOCKER_PASSWORD | docker login ghcr.io --username $DOCKER_USER --password-stdin
 
           make hub-router-docker
-          docker tag docker.pkg.github.com/trustbloc/hub-router/hub-router:latest ${HUB_ROUTER_PKG}:${HUB_ROUTER_TAG}
+          docker tag ghcr.io/trustbloc/hub-router:latest ${HUB_ROUTER_PKG}:${HUB_ROUTER_TAG}
           docker push ${HUB_ROUTER_PKG}:${HUB_ROUTER_TAG}
         env:
           DOCKER_USER: $(DOCKER_USER)

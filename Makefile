@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Namespace for the docker images
-DOCKER_OUTPUT_NS   ?= docker.pkg.github.com
-DOCKER_IMAGE_NAME ?= trustbloc/hub-router/hub-router
-MOCK_WEBHOOK_IMAGE_NAME ?= trustbloc/hub-router/mock-webhook
+DOCKER_OUTPUT_NS   ?= ghcr.io
+DOCKER_IMAGE_NAME ?= trustbloc/hub-router
+MOCK_WEBHOOK_IMAGE_NAME ?= trustbloc/mock-webhook
 
 # Tool commands (overridable)
 ALPINE_VER ?= 3.12
