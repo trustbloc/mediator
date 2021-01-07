@@ -14,6 +14,8 @@ WORKDIR src/github.com/trustbloc/hub-router
 RUN make hub-router
 
 FROM alpine:${ALPINE_VER}
+LABEL org.opencontainers.image.source https://github.com/trustbloc/hub-router
+
 COPY --from=base /go/src/github.com/trustbloc/hub-router/.build/bin/hub-router /usr/local/bin
 
 # set up nsswitch.conf for Go's "netgo" implementation
