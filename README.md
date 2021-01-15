@@ -12,7 +12,7 @@ The TrustBloc hub-router is a working implementation of the
 and the [Pickup](https://github.com/hyperledger/aries-rfcs/blob/master/features/0212-pickup/README.md) protocols built using
 [Hyperledger Aries Framework - Go](https://github.com/hyperledger/aries-framework-go/blob/main/README.md).
 
-Refer [documentation](docs/README.md) for api details. 
+Refer [documentation](docs/README.md) for api details.
 
 ## Contributing
 Thank you for your interest in contributing. Please see our
