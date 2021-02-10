@@ -412,7 +412,7 @@ func TestDIDCommMsgListener(t *testing.T) {
 		msgCh := make(chan service.DIDCommMsg, 1)
 		go c.didCommMsgListener(msgCh)
 
-		didDocBytes, err := mockdiddoc.GetMockDIDDoc().JSONBytes()
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t).JSONBytes()
 		require.NoError(t, err)
 
 		msgCh <- service.NewDIDCommMsgMap(CreateConnReq{
@@ -470,7 +470,7 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 			CreateErr: errors.New("did create error"),
 		}
 
-		didDocBytes, err := mockdiddoc.GetMockDIDDoc().JSONBytes()
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t).JSONBytes()
 		require.NoError(t, err)
 
 		msg := service.NewDIDCommMsgMap(CreateConnReq{
@@ -493,7 +493,7 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 			CreateConnErr: errors.New("create error"),
 		}
 
-		didDocBytes, err := mockdiddoc.GetMockDIDDoc().JSONBytes()
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t).JSONBytes()
 		require.NoError(t, err)
 
 		msg := service.NewDIDCommMsgMap(CreateConnReq{
