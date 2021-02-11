@@ -15,7 +15,7 @@ Returns hub-router DIDComm [Out-Of-Band invitation](https://github.com/hyperledg
 {
    "invitation":{
       "@id":"4fb5bb1d-705b-4be2-9fe3-0a406232ac8f",
-      "@type":"https://didcomm.org/oob-invitation/1.0/invitation",
+      "@type":"https://didcomm.org/out-of-band/1.0/invitation",
       "label":"hub-router",
       "service":[
          {
