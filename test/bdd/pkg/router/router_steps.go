@@ -123,9 +123,9 @@ func (e *Steps) invitation() error {
 		return fmt.Errorf("get invitation - marshal response :%w", err)
 	}
 
-	if result.Invitation.Type != "https://didcomm.org/oob-invitation/1.0/invitation" {
+	if result.Invitation.Type != "https://didcomm.org/out-of-band/1.0/invitation" {
 		return fmt.Errorf("invalid invitation type : expected=%s actual=%s",
-			"https://didcomm.org/oob-invitation/1.0/invitation", result.Invitation.Type)
+			"https://didcomm.org/out-of-band/1.0/invitation", result.Invitation.Type)
 	}
 
 	e.routerInvitationStr = result.Invitation
@@ -231,9 +231,9 @@ func (e *Steps) adapterInvitation() error {
 		return fmt.Errorf("get invitation - marshal response :%w", err)
 	}
 
-	if result.Invitation.Type != "https://didcomm.org/oob-invitation/1.0/invitation" {
+	if result.Invitation.Type != "https://didcomm.org/out-of-band/1.0/invitation" {
 		return fmt.Errorf("invalid invitation type : expected=%s actual=%s",
-			"https://didcomm.org/oob-invitation/1.0/invitation", result.Invitation.Type)
+			"https://didcomm.org/out-of-band/1.0/invitation", result.Invitation.Type)
 	}
 
 	e.adapterInvitationStr = result.Invitation

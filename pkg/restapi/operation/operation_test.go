@@ -110,7 +110,7 @@ func TestGenerateInvitationHandler(t *testing.T) {
 
 		require.NotEmpty(t, result.Invitation.ID)
 		require.Equal(t, result.Invitation.Label, "hub-router")
-		require.Equal(t, result.Invitation.Type, "https://didcomm.org/oob-invitation/1.0/invitation")
+		require.Equal(t, result.Invitation.Type, "https://didcomm.org/out-of-band/1.0/invitation")
 	})
 
 	t.Run("error", func(t *testing.T) {
