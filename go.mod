@@ -9,9 +9,9 @@ go 1.15
 require (
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
 	github.com/google/uuid v1.1.2
-	github.com/hyperledger/aries-framework-go v0.1.6-0.20210211154552-224e2e53596e
+	github.com/hyperledger/aries-framework-go v0.1.6-0.20210212132055-b94cce120dda
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/stretchr/testify v1.6.1
-	github.com/trustbloc/edge-core v0.1.6-0.20210127161542-9e174750f523
+	github.com/trustbloc/edge-core v0.1.6-0.20210212172534-81ab3a5abf5b
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 )
