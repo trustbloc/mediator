@@ -22,6 +22,7 @@ type mockServer struct{}
 func (m *mockServer) ListenAndServe(host string, router http.Handler) error {
 	return nil
 }
+
 func (m *mockServer) ListenAndServeTLS(host, certFile, keyFile string, router http.Handler) error {
 	return nil
 }
@@ -219,13 +220,9 @@ func TestGetStartCmd(t *testing.T) {
 
 		err := addHandlers(parameters, nil, nil, nil)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "init persistent storage provider with url : invalid dbURL")
+		require.Contains(t, err.Error(), "init persistent storage: invalid dbURL")
 
-		_, err = initEdgeStore("invaldidb://test", "", 10)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "unsupported storage driver: invaldidb")
-
-		_, err = initAriesStore("invaldidb://test", "", 10)
+		_, err = initStore("invaldidb://test", "", 10)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "unsupported storage driver: invaldidb")
 	})
@@ -280,51 +277,26 @@ func TestStartHubRouter(t *testing.T) {
 }
 
 func TestSupportedDatabases(t *testing.T) {
-	t.Run("edge store", func(t *testing.T) {
-		tests := []struct {
-			dbURL          string
-			isErr          bool
-			expectedErrMsg string
-		}{
-			{dbURL: "mem://test", isErr: false},
-			{dbURL: "mysql://test", isErr: true, expectedErrMsg: "edgestore init - connect to storage at test"},
-			{dbURL: "random", isErr: true, expectedErrMsg: "invalid dbURL random"},
+	tests := []struct {
+		dbURL          string
+		isErr          bool
+		expectedErrMsg string
+	}{
+		{dbURL: "mem://test", isErr: false},
+		{dbURL: "mysql://test", isErr: true, expectedErrMsg: "store init - connect to storage at test"},
+		{dbURL: "random", isErr: true, expectedErrMsg: "invalid dbURL random"},
+	}
+
+	for _, test := range tests {
+		_, err := initStore(test.dbURL, "hr-store", 1)
+
+		if !test.isErr {
+			require.NoError(t, err)
+		} else {
+			require.Error(t, err)
+			require.Contains(t, err.Error(), test.expectedErrMsg)
 		}
-
-		for _, test := range tests {
-			_, err := initEdgeStore(test.dbURL, "hr-store", 1)
-
-			if !test.isErr {
-				require.NoError(t, err)
-			} else {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), test.expectedErrMsg)
-			}
-		}
-	})
-
-	t.Run("aries store", func(t *testing.T) {
-		tests := []struct {
-			dbURL          string
-			isErr          bool
-			expectedErrMsg string
-		}{
-			{dbURL: "mem://test", isErr: false},
-			{dbURL: "mysql://test", isErr: true, expectedErrMsg: "ariesstore init - connect to storage at test"},
-			{dbURL: "random", isErr: true, expectedErrMsg: "invalid dbURL random"},
-		}
-
-		for _, test := range tests {
-			_, err := initAriesStore(test.dbURL, "hr-store", 1)
-
-			if !test.isErr {
-				require.NoError(t, err)
-			} else {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), test.expectedErrMsg)
-			}
-		}
-	})
+	}
 }
 
 func checkFlagPropertiesCorrect(t *testing.T, cmd *cobra.Command, flagName, flagShorthand, flagUsage string) {
