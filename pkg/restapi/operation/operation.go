@@ -22,8 +22,8 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
 	vdrapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
 	"github.com/hyperledger/aries-framework-go/pkg/vdr/peer"
+	"github.com/hyperledger/aries-framework-go/spi/storage"
 	"github.com/trustbloc/edge-core/pkg/log"
-	"github.com/trustbloc/edge-core/pkg/storage"
 
 	"github.com/trustbloc/hub-router/pkg/aries"
 	"github.com/trustbloc/hub-router/pkg/internal/common/support"
@@ -243,7 +243,8 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 
 	// create peer DID
 	docResolution, err := o.vdriRegistry.Create(peer.DIDMethod, &did.Doc{
-		Service: []did.Service{{ServiceEndpoint: o.endpoint}}})
+		Service: []did.Service{{ServiceEndpoint: o.endpoint}},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create new peer did : %w", err)
 	}

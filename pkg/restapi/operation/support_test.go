@@ -9,6 +9,7 @@ package operation
 import (
 	"fmt"
 
+	"github.com/hyperledger/aries-framework-go/component/storageutil/mem"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/messaging/msghandler"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/mediator"
@@ -20,7 +21,6 @@ import (
 	mockprovider "github.com/hyperledger/aries-framework-go/pkg/mock/provider"
 	mockstore "github.com/hyperledger/aries-framework-go/pkg/mock/storage"
 	mockvdri "github.com/hyperledger/aries-framework-go/pkg/mock/vdr"
-	"github.com/trustbloc/edge-core/pkg/storage/memstore"
 
 	"github.com/trustbloc/hub-router/pkg/aries"
 	mockoutofband "github.com/trustbloc/hub-router/pkg/internal/mock/outofband"
@@ -47,8 +47,8 @@ func config() *Config {
 		Aries:        getAriesCtx(),
 		MsgRegistrar: msghandler.NewRegistrar(),
 		Storage: &Storage{
-			Persistent: memstore.NewProvider(),
-			Transient:  memstore.NewProvider(),
+			Persistent: mem.NewProvider(),
+			Transient:  mem.NewProvider(),
 		},
 	}
 }
