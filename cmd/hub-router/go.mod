@@ -11,7 +11,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.0
 	github.com/containerd/continuity v0.0.0-20200928162600-f2cc35102c2a // indirect
 	github.com/gorilla/mux v1.7.4
-	github.com/hyperledger/aries-framework-go v0.1.6-0.20210302153503-0e00e248f14d
+	github.com/hyperledger/aries-framework-go v0.1.6-0.20210305161732-29081cf55c77
 	github.com/hyperledger/aries-framework-go-ext/component/storage/mysql v0.0.0-20210301183320-85351acdb748
 	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20210224230531-58e1368e5661
 	github.com/hyperledger/aries-framework-go/spi v0.0.0-20210302153503-0e00e248f14d
@@ -20,7 +20,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.7.0
-	github.com/trustbloc/edge-core v0.1.6-0.20210212172534-81ab3a5abf5b
+	github.com/trustbloc/edge-core v0.1.6-0.20210304151911-954ad69796fc
 	github.com/trustbloc/hub-router v0.0.0-00010101000000-000000000000
 )
 
