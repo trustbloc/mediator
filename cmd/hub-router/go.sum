@@ -512,8 +512,8 @@ github.com/huaweicloud/golangsdk v0.0.0-20200304081349-45ec0797f2a4/go.mod h1:WQ
 github.com/hyperledger/aries-framework-go v0.1.6-0.20210304143139-eb97711ddc73/go.mod h1:uzv9LEnmNwl+3KDTns5H9hoa31dpKdZeEDijoRQQDpM=
 github.com/hyperledger/aries-framework-go v0.1.6-0.20210305161732-29081cf55c77 h1:mIQe33yglE55vBr1fHCukqF3r3ZXvcGpmazYpcbIvQE=
 github.com/hyperledger/aries-framework-go v0.1.6-0.20210305161732-29081cf55c77/go.mod h1:9y5nXHe7XLoyah/VdnC9hYqo3nDisnbGNq17CE69Az0=
-github.com/hyperledger/aries-framework-go-ext/component/storage/mysql v0.0.0-20210301183320-85351acdb748 h1:CaZyvfG4Hcbqg+95AUEmjs7y4e+OeIgYJKmy3nDr5cs=
-github.com/hyperledger/aries-framework-go-ext/component/storage/mysql v0.0.0-20210301183320-85351acdb748/go.mod h1:g4w+9JdQXlR9DK1HUIhig3SteJBuMY5Zt310q5gYans=
+github.com/hyperledger/aries-framework-go-ext/component/storage/mysql v0.0.0-20210305233053-d3d22c802c12 h1:XIKv2HucX1loRarrti1LVDg/VqelflS07oZCgTVaJ1E=
+github.com/hyperledger/aries-framework-go-ext/component/storage/mysql v0.0.0-20210305233053-d3d22c802c12/go.mod h1:g4w+9JdQXlR9DK1HUIhig3SteJBuMY5Zt310q5gYans=
 github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20210224230531-58e1368e5661 h1:VmyvcZ2fMyrE7UCXPSAsMwjKOm5GlpxJSb8sWsTkeQY=
 github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20210224230531-58e1368e5661/go.mod h1:XaPVDJcbQT8BKmThfQdWPc+hgicHFAQzSOavHw2gn/4=
 github.com/hyperledger/aries-framework-go/spi v0.0.0-20210205153949-f852f978a0d6/go.mod h1:fDr9wW00GJJl1lR1SFHmJW8utIocdvjO5RNhAYS05EY=

@@ -12,7 +12,7 @@ require (
 	github.com/containerd/continuity v0.0.0-20200928162600-f2cc35102c2a // indirect
 	github.com/gorilla/mux v1.7.4
 	github.com/hyperledger/aries-framework-go v0.1.6-0.20210305161732-29081cf55c77
-	github.com/hyperledger/aries-framework-go-ext/component/storage/mysql v0.0.0-20210301183320-85351acdb748
+	github.com/hyperledger/aries-framework-go-ext/component/storage/mysql v0.0.0-20210305233053-d3d22c802c12
 	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20210224230531-58e1368e5661
 	github.com/hyperledger/aries-framework-go/spi v0.0.0-20210302153503-0e00e248f14d
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
