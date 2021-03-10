@@ -8,16 +8,12 @@ go 1.15
 
 require (
 	github.com/cenkalti/backoff/v4 v4.1.0
-	github.com/containerd/continuity v0.0.0-20200928162600-f2cc35102c2a // indirect
 	github.com/cucumber/godog v0.9.0
 	github.com/fsouza/go-dockerclient v1.6.5
 	github.com/google/uuid v1.1.2
-	github.com/hyperledger/aries-framework-go v0.1.6
-	github.com/opencontainers/runc v1.0.0-rc9 // indirect
-	github.com/sirupsen/logrus v1.7.0 // indirect
-	github.com/trustbloc/edge-core v0.1.6
+	github.com/hyperledger/aries-framework-go v0.1.7-0.20210310014234-cfa8c6d6e2f4
+	github.com/trustbloc/edge-core v0.1.7-0.20210310142750-7eb11997c4a9
 	github.com/trustbloc/hub-router v0.0.0-00010101000000-000000000000
-	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb // indirect
 	gotest.tools/v3 v3.0.3 // indirect
 )
 
