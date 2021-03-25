@@ -14,7 +14,7 @@ type MockClient struct {
 }
 
 // CreateInvitation creates a mock outofband invitation.
-func (c *MockClient) CreateInvitation([]string, ...outofband.MessageOption) (*outofband.Invitation, error) {
+func (c *MockClient) CreateInvitation([]interface{}, ...outofband.MessageOption) (*outofband.Invitation, error) {
 	if c.CreateInvitationErr != nil {
 		return nil, c.CreateInvitationErr
 	}
