@@ -34,7 +34,7 @@ type Ctx interface {
 
 // OutOfBand client.
 type OutOfBand interface {
-	CreateInvitation(protocols []string, opts ...outofband.MessageOption) (*outofband.Invitation, error)
+	CreateInvitation(services []interface{}, opts ...outofband.MessageOption) (*outofband.Invitation, error)
 }
 
 // DIDExchange client.

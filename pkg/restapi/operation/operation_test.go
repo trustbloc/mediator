@@ -23,6 +23,7 @@ import (
 	mocksvc "github.com/hyperledger/aries-framework-go/pkg/mock/didcomm/protocol/didexchange"
 	mockroute "github.com/hyperledger/aries-framework-go/pkg/mock/didcomm/protocol/mediator"
 	mockdiddoc "github.com/hyperledger/aries-framework-go/pkg/mock/diddoc"
+	mockkms "github.com/hyperledger/aries-framework-go/pkg/mock/kms"
 	mockprovider "github.com/hyperledger/aries-framework-go/pkg/mock/provider"
 	mockstore "github.com/hyperledger/aries-framework-go/pkg/mock/storage"
 	mockvdri "github.com/hyperledger/aries-framework-go/pkg/mock/vdr"
@@ -505,6 +506,30 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 		})
 
 		_, err = c.handleCreateConnReq(msg)
+		require.Error(t, err)
 		require.Contains(t, err.Error(), "create connection")
+	})
+
+	t.Run("error if cannot create key", func(t *testing.T) {
+		expected := errors.New("test")
+
+		c, err := New(config())
+		require.NoError(t, err)
+
+		c.keyManager = &mockkms.KeyManager{CrAndExportPubKeyErr: expected}
+
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t).JSONBytes()
+		require.NoError(t, err)
+
+		msg := service.NewDIDCommMsgMap(CreateConnReq{
+			ID:   uuid.New().String(),
+			Type: createConnReq,
+			Data: &CreateConnReqData{
+				DIDDoc: didDocBytes,
+			},
+		})
+
+		_, err = c.handleCreateConnReq(msg)
+		require.ErrorIs(t, err, expected)
 	})
 }

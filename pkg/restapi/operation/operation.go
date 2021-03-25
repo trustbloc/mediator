@@ -21,6 +21,7 @@ import (
 	mediatordsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/mediator"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
 	vdrapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
+	"github.com/hyperledger/aries-framework-go/pkg/kms"
 	"github.com/hyperledger/aries-framework-go/pkg/vdr/peer"
 	"github.com/hyperledger/aries-framework-go/spi/storage"
 	"github.com/trustbloc/edge-core/pkg/log"
@@ -76,6 +77,7 @@ type Operation struct {
 	mediator     aries.Mediator
 	messenger    service.Messenger
 	vdriRegistry vdrapi.Registry
+	keyManager   kms.KeyManager
 	endpoint     string
 }
 
@@ -107,6 +109,7 @@ func New(config *Config) (*Operation, error) {
 		messenger:    config.AriesMessenger,
 		vdriRegistry: config.Aries.VDRegistry(),
 		endpoint:     config.Aries.RouterEndpoint(),
+		keyManager:   config.Aries.KMS(),
 	}
 
 	msgCh := make(chan service.DIDCommMsg, 1)
@@ -241,10 +244,25 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 		return nil, fmt.Errorf("parse did doc : %w", err)
 	}
 
+	// TODO - key type should be configurable
+	keyID, pubKeyBytes, err := o.keyManager.CreateAndExportPubKeyBytes(kms.ED25519Type)
+	if err != nil {
+		return nil, fmt.Errorf("kms failed to create key: %w", err)
+	}
+
 	// create peer DID
-	docResolution, err := o.vdriRegistry.Create(peer.DIDMethod, &did.Doc{
-		Service: []did.Service{{ServiceEndpoint: o.endpoint}},
-	})
+	docResolution, err := o.vdriRegistry.Create(
+		peer.DIDMethod,
+		&did.Doc{
+			Service: []did.Service{{ServiceEndpoint: o.endpoint}},
+			VerificationMethod: []did.VerificationMethod{*did.NewVerificationMethodFromBytes(
+				"#"+keyID,
+				"Ed25519VerificationKey2018",
+				"",
+				pubKeyBytes,
+			)},
+		},
+	)
 	if err != nil {
 		return nil, fmt.Errorf("create new peer did : %w", err)
 	}
@@ -259,6 +277,8 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 	if err != nil {
 		return nil, fmt.Errorf("marshal did doc : %w", err)
 	}
+
+	logger.Debugf("created PEER DID: %s", newDocBytes)
 
 	// send router did doc
 	return service.NewDIDCommMsgMap(&CreateConnResp{
