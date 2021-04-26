@@ -35,7 +35,7 @@ func (m *MsgService) Accept(msgType string, _ []string) bool {
 }
 
 // HandleInbound handles inbound didcomm msg.
-func (m *MsgService) HandleInbound(msg service.DIDCommMsg, _, _ string) (string, error) {
+func (m *MsgService) HandleInbound(msg service.DIDCommMsg, _ service.DIDCommContext) (string, error) {
 	go func() {
 		m.msgCh <- msg
 	}()

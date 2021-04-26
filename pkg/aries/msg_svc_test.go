@@ -36,7 +36,7 @@ func TestNewMsgSvc(t *testing.T) {
 		Type string `json:"@type,omitempty"`
 	}{Type: msgType})
 
-	_, err := msgSvc.HandleInbound(msg, "", "")
+	_, err := msgSvc.HandleInbound(msg, nil)
 	require.NoError(t, err)
 
 	select {

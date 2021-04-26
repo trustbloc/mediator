@@ -27,6 +27,7 @@ coverage.out
 
 # Exclude build directory
 .build
+build/
 *.log
 
 test/bdd/fixtures/keys/tls
