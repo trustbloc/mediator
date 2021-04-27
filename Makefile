@@ -9,7 +9,7 @@ MOCK_WEBHOOK_IMAGE_NAME ?= trustbloc/mock-webhook
 
 # Tool commands (overridable)
 ALPINE_VER ?= 3.12
-GO_VER ?= 1.15
+GO_VER ?= 1.16
 
 .PHONY: all
 all: checks unit-test bdd-test
@@ -59,7 +59,7 @@ hub-router:
 mock-webhook:
 	@echo "Building mock webhook server"
 	@mkdir -p ./build/bin
-	@go build -o ./build/bin/webhook-server test/mock/cmd/webhook/main.go
+	@cd test/mock/cmd/webhook && go build -o ../../../../build/bin/webhook-server ./main.go
 
 .PHONY: mock-webhook-docker
 mock-webhook-docker:

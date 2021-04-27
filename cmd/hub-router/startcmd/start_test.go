@@ -300,6 +300,8 @@ func TestSupportedDatabases(t *testing.T) {
 }
 
 func checkFlagPropertiesCorrect(t *testing.T, cmd *cobra.Command, flagName, flagShorthand, flagUsage string) {
+	t.Helper()
+
 	flag := cmd.Flag(flagName)
 
 	require.NotNil(t, flag)
@@ -313,6 +315,8 @@ func checkFlagPropertiesCorrect(t *testing.T, cmd *cobra.Command, flagName, flag
 }
 
 func randomURL(t *testing.T) string {
+	t.Helper()
+
 	p, err := freeport.GetFreePort()
 	require.NoError(t, err)
 

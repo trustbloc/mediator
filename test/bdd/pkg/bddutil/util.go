@@ -60,7 +60,7 @@ func SendHTTPReq(method, destination string, message []byte, result interface{},
 	// create request
 	req, err := http.NewRequestWithContext(context.Background(), method, destination, bytes.NewBuffer(message))
 	if err != nil {
-		return fmt.Errorf("failed to create new http '%s' request for '%s', cause: %s", method, destination, err)
+		return fmt.Errorf("failed to create new http '%s' request for '%s', cause: %w", method, destination, err)
 	}
 
 	// set headers
@@ -69,16 +69,16 @@ func SendHTTPReq(method, destination string, message []byte, result interface{},
 	httpClient := &http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}
 
 	// send http request
-	resp, err := httpClient.Do(req) //nolint:bodyclose // false positive as body is closed in util function
+	resp, err := httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to get response from '%s', cause :%s", destination, err)
+		return fmt.Errorf("failed to get response from '%s', cause :%w", destination, err)
 	}
 
 	defer CloseResponseBody(resp.Body)
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("unable to read response from '%s', cause :%s", destination, err)
+		return fmt.Errorf("unable to read response from '%s', cause :%w", destination, err)
 	}
 
 	logger.Debugf("Got response from '%s' [method: %s], response payload: %s", destination, method, string(data))
