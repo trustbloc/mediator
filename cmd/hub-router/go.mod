@@ -9,10 +9,10 @@ go 1.15
 require (
 	github.com/cenkalti/backoff/v4 v4.1.0
 	github.com/gorilla/mux v1.7.4
-	github.com/hyperledger/aries-framework-go v0.1.7-0.20210421205521-3974f6708723
-	github.com/hyperledger/aries-framework-go-ext/component/storage/mysql v0.0.0-20210306194409-6e4c5d622fbc
-	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20210409151411-eeeb8508bd87
-	github.com/hyperledger/aries-framework-go/spi v0.0.0-20210412201938-efffe3eafcd1
+	github.com/hyperledger/aries-framework-go v0.1.7-0.20210427144858-06fb8b7d2d30
+	github.com/hyperledger/aries-framework-go-ext/component/storage/mysql v0.0.0-20210429200350-4099d2551ddd
+	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20210422133815-2ef2d99cb692
+	github.com/hyperledger/aries-framework-go/spi v0.0.0-20210422144621-1355c6f90b44
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/rs/cors v1.7.0
 	github.com/spf13/cobra v1.0.0

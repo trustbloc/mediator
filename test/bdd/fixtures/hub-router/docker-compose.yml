@@ -20,8 +20,8 @@ services:
       - HUB_ROUTER_DIDCOMM_HTTP_HOST_EXTERNAL=https://hub-router.example.com:${HUB_ROUTER_DIDCOMM_HTTP_PORT}
       - HUB_ROUTER_DIDCOMM_WS_HOST=0.0.0.0:${HUB_ROUTER_DIDCOMM_WS_PORT}
       - HUB_ROUTER_DIDCOMM_WS_HOST_EXTERNAL=wss://hub-router.example.com:${HUB_ROUTER_DIDCOMM_WS_PORT}
-      - HUB_ROUTER_DSN_PERSISTENT=mysql://hubrouter:hubrouter-secret-pw@tcp(mysql:3306)/
-      - HUB_ROUTER_DSN_TRANSIENT=mysql://hubrouter:hubrouter-secret-pw@tcp(mysql:3306)/
+      - HUB_ROUTER_DSN_PERSISTENT=mysql://hubrouter:hubrouter-secret-pw@tcp(mysql:3306)/?interpolateParams=true&multiStatements=true
+      - HUB_ROUTER_DSN_TRANSIENT=mysql://hubrouter:hubrouter-secret-pw@tcp(mysql:3306)/?interpolateParams=true&multiStatements=true
       - HUB_ROUTER_DSN_TIMEOUT=45
       - HUB_ROUTER_LOGLEVEL=INFO
     ports:
