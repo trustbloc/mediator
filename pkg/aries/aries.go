@@ -30,6 +30,8 @@ type Ctx interface {
 	KMS() kms.KeyManager
 	VDRegistry() vdrapi.Registry
 	Crypto() ariescrypto.Crypto
+	KeyType() kms.KeyType
+	KeyAgreementType() kms.KeyType
 }
 
 // OutOfBand client.

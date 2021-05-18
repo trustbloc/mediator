@@ -10,7 +10,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/google/uuid v1.2.0
-	github.com/hyperledger/aries-framework-go v0.1.7-0.20210427144858-06fb8b7d2d30
+	github.com/hyperledger/aries-framework-go v0.1.7-0.20210517160459-a72f856f36b8
 	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20210422133815-2ef2d99cb692
 	github.com/hyperledger/aries-framework-go/spi v0.0.0-20210422144621-1355c6f90b44
 	github.com/hyperledger/aries-framework-go/test/component v0.0.0-20210422144621-1355c6f90b44 // indirect
