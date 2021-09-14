@@ -17,6 +17,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gorilla/mux"
+	"github.com/hyperledger/aries-framework-go-ext/component/storage/mongodb"
 	"github.com/hyperledger/aries-framework-go-ext/component/storage/mysql"
 	"github.com/hyperledger/aries-framework-go/component/storageutil/mem"
 	arieslog "github.com/hyperledger/aries-framework-go/pkg/common/log"
@@ -101,16 +102,18 @@ const (
 	datasourcePersistentFlagName  = "dsn-p"
 	datasourcePersistentFlagUsage = "Persistent datasource Name with credentials if required." +
 		" Format must be <driver>:[//]<driver-specific-dsn>." +
-		" Examples: 'mysql://root:secret@tcp(localhost:3306)/hubrouter', 'mem://test'." +
-		" Supported drivers are [mem, mysql]." +
+		" Examples: 'mysql://root:secret@tcp(localhost:3306)/hubrouter', 'mem://test'," +
+		" 'mongodb://mongodb.example.com:27017'." +
+		" Supported drivers are [mem, mysql, mongodb]." +
 		" Alternatively, this can be set with the following environment variable: " + datasourcePersistentEnvKey
 	datasourcePersistentEnvKey = "HUB_ROUTER_DSN_PERSISTENT"
 
 	datasourceTransientFlagName  = "dsn-t"
 	datasourceTransientFlagUsage = "Datasource Name with credentials if required." +
 		" Format must be <driver>:[//]<driver-specific-dsn>." +
-		" Examples: 'mysql://root:secret@tcp(localhost:3306)/hubrouter', 'mem://test'." +
-		" Supported drivers are [mem, mysql]." +
+		" Examples: 'mysql://root:secret@tcp(localhost:3306)/hubrouter', 'mem://test'," +
+		" 'mongodb://mongodb.example.com:27017'." +
+		" Supported drivers are [mem, mysql, mongodb]." +
 		" Alternatively, this can be set with the following environment variable: " + datasourceTransientEnvKey
 	datasourceTransientEnvKey = "HUB_ROUTER_DSN_TRANSIENT"
 
@@ -135,15 +138,26 @@ const (
 	sleep = 1 * time.Second
 )
 
+// Database types.
+const (
+	databaseTypeMemOption     = "mem"
+	databaseTypeMySQLOption   = "mysql"
+	databaseTypeMongoDBOption = "mongodb"
+)
+
 var logger = log.New("hub-router")
 
 // nolint:gochecknoglobals // we map the <driver> portion of datasource URLs to this map's keys
 var supportedStorageProviders = map[string]func(string, string) (storage.Provider, error){
-	"mysql": func(dsn, prefix string) (storage.Provider, error) {
+	databaseTypeMySQLOption: func(dsn, prefix string) (storage.Provider, error) {
 		return mysql.NewProvider(dsn, mysql.WithDBPrefix(prefix))
 	},
-	"mem": func(_, _ string) (storage.Provider, error) { // nolint:unparam // memstorage provider never returns error
+	databaseTypeMemOption: func(
+		_, _ string) (storage.Provider, error) { // nolint:unparam // memstorage provider never returns error
 		return mem.NewProvider(), nil
+	},
+	databaseTypeMongoDBOption: func(dsn, prefix string) (storage.Provider, error) {
+		return mongodb.NewProvider(dsn, mongodb.WithDBPrefix(prefix))
 	},
 }
 
@@ -604,6 +618,12 @@ func getDBParams(dbURL string) (driver, dsn string, err error) {
 	}
 
 	driver = parsed[0]
+
+	if driver == databaseTypeMongoDBOption {
+		// The MongoDB storage provider needs the full connection string (including the driver as part of it).
+		return driver, dbURL, nil
+	}
+
 	dsn = strings.TrimPrefix(parsed[1], "//")
 
 	return driver, dsn, nil

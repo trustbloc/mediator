@@ -284,6 +284,7 @@ func TestSupportedDatabases(t *testing.T) {
 	}{
 		{dbURL: "mem://test", isErr: false},
 		{dbURL: "mysql://test", isErr: true, expectedErrMsg: "store init - connect to storage at test"},
+		{dbURL: "mongodb://", isErr: true, expectedErrMsg: "store init - connect to storage at mongodb://"},
 		{dbURL: "random", isErr: true, expectedErrMsg: "invalid dbURL random"},
 	}
 
