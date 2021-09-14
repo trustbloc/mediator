@@ -20,8 +20,8 @@ services:
       - HUB_ROUTER_DIDCOMM_HTTP_HOST_EXTERNAL=https://hub-router.example.com:${HUB_ROUTER_DIDCOMM_HTTP_PORT}
       - HUB_ROUTER_DIDCOMM_WS_HOST=0.0.0.0:${HUB_ROUTER_DIDCOMM_WS_PORT}
       - HUB_ROUTER_DIDCOMM_WS_HOST_EXTERNAL=wss://hub-router.example.com:${HUB_ROUTER_DIDCOMM_WS_PORT}
-      - HUB_ROUTER_DSN_PERSISTENT=mysql://hubrouter:hubrouter-secret-pw@tcp(mysql:3306)/?interpolateParams=true&multiStatements=true
-      - HUB_ROUTER_DSN_TRANSIENT=mysql://hubrouter:hubrouter-secret-pw@tcp(mysql:3306)/?interpolateParams=true&multiStatements=true
+      - HUB_ROUTER_DSN_PERSISTENT=mongodb://mongodb.example.com:27017
+      - HUB_ROUTER_DSN_TRANSIENT=mongodb://mongodb.example.com:27017
       - HUB_ROUTER_DSN_TIMEOUT=45
       - HUB_ROUTER_LOGLEVEL=INFO
     ports:
@@ -33,21 +33,15 @@ services:
     volumes:
       - ../keys/tls:/etc/tls
     depends_on:
-      - mysql
+      - mongodb.example.com
     networks:
       - bdd_test
 
-  mysql:
-    container_name: mysql
-    image: mysql:${MYSQL_IMAGE_TAG}
-    restart: always
-    command: --default-authentication-plugin=mysql_native_password
-    environment:
-      MYSQL_ROOT_PASSWORD: secret
-    logging:
-      driver: "none"
-    volumes:
-      - ./mysql-config:/docker-entrypoint-initdb.d
+  mongodb.example.com:
+    container_name: mongodb.example.com
+    image: mongo:4.0.0
+    ports:
+      - "27017:27017"
     networks:
       - bdd_test
 
