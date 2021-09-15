@@ -337,7 +337,7 @@ func TestDIDCommMsgListener(t *testing.T) {
 		done := make(chan struct{})
 
 		c.messenger = &messenger.MockMessenger{
-			ReplyToFunc: func(msgID string, msg service.DIDCommMsgMap) error {
+			ReplyToFunc: func(msgID string, msg service.DIDCommMsgMap, _ ...service.Opt) error {
 				pMsg := &CreateConnResp{}
 				err = msg.Decode(pMsg)
 				require.NoError(t, err)
@@ -370,7 +370,7 @@ func TestDIDCommMsgListener(t *testing.T) {
 		require.NoError(t, err)
 
 		c.messenger = &messenger.MockMessenger{
-			ReplyToFunc: func(msgID string, msg service.DIDCommMsgMap) error {
+			ReplyToFunc: func(msgID string, msg service.DIDCommMsgMap, _ ...service.Opt) error {
 				return errors.New("reply error")
 			},
 		}
@@ -390,7 +390,7 @@ func TestDIDCommMsgListener(t *testing.T) {
 		done := make(chan struct{})
 
 		c.messenger = &messenger.MockMessenger{
-			ReplyToFunc: func(msgID string, msg service.DIDCommMsgMap) error {
+			ReplyToFunc: func(msgID string, msg service.DIDCommMsgMap, _ ...service.Opt) error {
 				pMsg := &CreateConnResp{}
 				dErr := msg.Decode(pMsg)
 				require.NoError(t, dErr)
