@@ -12,12 +12,12 @@ import (
 
 // MockMessenger mock messenger.
 type MockMessenger struct {
-	ReplyToFunc func(msgID string, msg service.DIDCommMsgMap) error
+	ReplyToFunc func(msgID string, msg service.DIDCommMsgMap, opts ...service.Opt) error
 	SendFunc    func(msg service.DIDCommMsgMap, myDID, theirDID string) error
 }
 
 // ReplyTo reply to a message.
-func (m *MockMessenger) ReplyTo(msgID string, msg service.DIDCommMsgMap) error {
+func (m *MockMessenger) ReplyTo(msgID string, msg service.DIDCommMsgMap, _ ...service.Opt) error {
 	if m.ReplyToFunc != nil {
 		return m.ReplyToFunc(msgID, msg)
 	}
@@ -26,12 +26,12 @@ func (m *MockMessenger) ReplyTo(msgID string, msg service.DIDCommMsgMap) error {
 }
 
 // ReplyToMsg reply to a message.
-func (m *MockMessenger) ReplyToMsg(_, _ service.DIDCommMsgMap, _, _ string) error {
+func (m *MockMessenger) ReplyToMsg(_, _ service.DIDCommMsgMap, _, _ string, _ ...service.Opt) error {
 	return nil
 }
 
 // Send send message.
-func (m *MockMessenger) Send(msg service.DIDCommMsgMap, myDID, theirDID string) error {
+func (m *MockMessenger) Send(msg service.DIDCommMsgMap, myDID, theirDID string, _ ...service.Opt) error {
 	if m.SendFunc != nil {
 		return m.SendFunc(msg, myDID, theirDID)
 	}
@@ -40,7 +40,8 @@ func (m *MockMessenger) Send(msg service.DIDCommMsgMap, myDID, theirDID string) 
 }
 
 // SendToDestination send mesage to destination.
-func (m *MockMessenger) SendToDestination(_ service.DIDCommMsgMap, _ string, _ *service.Destination) error {
+func (m *MockMessenger) SendToDestination(_ service.DIDCommMsgMap, _ string, _ *service.Destination,
+	_ ...service.Opt) error {
 	return nil
 }
 
