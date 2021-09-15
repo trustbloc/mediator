@@ -24,7 +24,6 @@ import (
 	didexcmd "github.com/hyperledger/aries-framework-go/pkg/controller/command/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/controller/command/messaging"
 	oobcmd "github.com/hyperledger/aries-framework-go/pkg/controller/command/outofband"
-	vdrcmd "github.com/hyperledger/aries-framework-go/pkg/controller/command/vdr"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
 	"github.com/trustbloc/edge-core/pkg/log"
@@ -492,19 +491,14 @@ func (e *Steps) pullMsgFromWebhookURL(webhookURL, topic string) (*service.DIDCom
 func (e *Steps) resolveDID(controller, didID string) (*did.Doc, error) {
 	destination := fmt.Sprintf(controller+resolveDIDPath, base64.StdEncoding.EncodeToString([]byte(didID)))
 
-	var resp vdrcmd.Document
+	var resp did.DocResolution
 
 	err := bddutil.SendHTTPReq(http.MethodGet, destination, nil, &resp, e.bddContext.TLSConfig)
 	if err != nil {
 		return nil, fmt.Errorf("%s failed to fetch did=%s : %w", controller, didID, err)
 	}
 
-	doc, err := did.ParseDocument(resp.DID)
-	if err != nil {
-		return nil, fmt.Errorf("%s failed to parse did document : %w", controller, err)
-	}
-
-	return doc, nil
+	return resp.DIDDocument, nil
 }
 
 func (e *Steps) getConnection(controller, connectionID string) (*didexchange.Connection, error) {
