@@ -12,8 +12,10 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/client/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/client/mediator"
 	"github.com/hyperledger/aries-framework-go/pkg/client/outofband"
+	"github.com/hyperledger/aries-framework-go/pkg/client/outofbandv2"
 	ariescrypto "github.com/hyperledger/aries-framework-go/pkg/crypto"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
+	oobv2svc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/outofbandv2"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
 	vdrapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
 	"github.com/hyperledger/aries-framework-go/pkg/kms"
@@ -40,6 +42,11 @@ type OutOfBand interface {
 	CreateInvitation(services []interface{}, opts ...outofband.MessageOption) (*outofband.Invitation, error)
 }
 
+// OutOfBandV2 client.
+type OutOfBandV2 interface {
+	CreateInvitation(opts ...outofbandv2.MessageOption) (*oobv2svc.Invitation, error)
+}
+
 // DIDExchange client.
 type DIDExchange interface {
 	CreateConnection(myDID string, theirDID *did.Doc, options ...didexchange.ConnectionOption) (string, error)
@@ -60,6 +67,16 @@ func CreateOutofbandClient(ariesCtx outofband.Provider) (*outofband.Client, erro
 	}
 
 	return oobClient, err
+}
+
+// CreateOutOfBandV2Client util function to create oob v2 client.
+func CreateOutOfBandV2Client(ariesCtx outofbandv2.Provider) (*outofbandv2.Client, error) {
+	oobClient, err := outofbandv2.New(ariesCtx)
+	if err != nil {
+		return nil, fmt.Errorf("create out-of-band-v2 client: %w", err)
+	}
+
+	return oobClient, nil
 }
 
 // CreateDIDExchangeClient util function to create did exchange client and registers for action event.

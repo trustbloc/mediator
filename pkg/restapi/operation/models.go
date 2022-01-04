@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/aries-framework-go/pkg/client/outofband"
+	"github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/outofbandv2"
 )
 
 type healthCheckResp struct {
@@ -21,6 +22,16 @@ type healthCheckResp struct {
 // DIDCommInvitationResp model.
 type DIDCommInvitationResp struct {
 	Invitation *outofband.Invitation `json:"invitation"`
+}
+
+// DIDCommInvitationV2Req model.
+type DIDCommInvitationV2Req struct {
+	DID string `json:"did"`
+}
+
+// DIDCommInvitationV2Resp model.
+type DIDCommInvitationV2Resp struct {
+	Invitation *outofbandv2.Invitation `json:"invitation"`
 }
 
 // CreateConnReq model.

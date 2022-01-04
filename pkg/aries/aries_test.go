@@ -35,6 +35,21 @@ func TestCreateOutofbandClient(t *testing.T) {
 	})
 }
 
+func TestCreateOutofbandV2Client(t *testing.T) {
+	t.Run("oobv2 client - success", func(t *testing.T) {
+		c, err := CreateOutOfBandV2Client(getAriesCtx())
+		require.NoError(t, err)
+		require.NotNil(t, c)
+	})
+
+	t.Run("oobv2 client - error", func(t *testing.T) {
+		c, err := CreateOutOfBandV2Client(&mockprovider.Provider{})
+		require.Nil(t, c)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "create out-of-band-v2 client")
+	})
+}
+
 func TestCreateDIDExchangeClient(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		c, err := CreateDIDExchangeClient(getAriesCtx(), nil, nil)

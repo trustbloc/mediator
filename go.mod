@@ -9,7 +9,7 @@ go 1.16
 require (
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
 	github.com/google/uuid v1.2.0
-	github.com/hyperledger/aries-framework-go v0.1.8-0.20211020135731-5ab9da9e29ab
+	github.com/hyperledger/aries-framework-go v0.1.8-0.20211231170827-1f7d634dfcec
 	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20211020135731-5ab9da9e29ab
 	github.com/hyperledger/aries-framework-go/spi v0.0.0-20211020135731-5ab9da9e29ab
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect

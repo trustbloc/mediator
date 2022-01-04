@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package operation
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	didexdsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/didexchange"
 	mediatordsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/mediator"
 	outofbandsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/outofband"
+	"github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/outofbandv2"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
 	mocksvc "github.com/hyperledger/aries-framework-go/pkg/mock/didcomm/protocol/didexchange"
 	mockroute "github.com/hyperledger/aries-framework-go/pkg/mock/didcomm/protocol/mediator"
@@ -32,6 +34,7 @@ import (
 	"github.com/trustbloc/hub-router/pkg/internal/mock/didexchange"
 	"github.com/trustbloc/hub-router/pkg/internal/mock/messenger"
 	mockoutofband "github.com/trustbloc/hub-router/pkg/internal/mock/outofband"
+	mockoutofbandv2 "github.com/trustbloc/hub-router/pkg/internal/mock/outofbandv2"
 )
 
 func TestNew(t *testing.T) {
@@ -39,7 +42,7 @@ func TestNew(t *testing.T) {
 		o, err := New(config())
 		require.NoError(t, err)
 
-		require.Len(t, o.GetRESTHandlers(), 2)
+		require.Len(t, o.GetRESTHandlers(), 3)
 	})
 
 	t.Run("aries store error", func(t *testing.T) {
@@ -54,11 +57,28 @@ func TestNew(t *testing.T) {
 		require.Contains(t, err.Error(), "out-of-band client")
 	})
 
+	t.Run("out of band v2 client creation error", func(t *testing.T) {
+		config := config()
+		config.Aries = &mockprovider.Provider{
+			ServiceMap: map[string]interface{}{
+				outofbandsvc.Name:         &mockoutofband.MockService{},
+				mediatordsvc.Coordination: &mockroute.MockMediatorSvc{},
+				didexdsvc.DIDExchange:     &mocksvc.MockDIDExchangeSvc{},
+			},
+		}
+
+		o, err := New(config)
+		require.Nil(t, o)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "out-of-band-v2 client")
+	})
+
 	t.Run("mediator client creation error", func(t *testing.T) {
 		config := config()
 		config.Aries = &mockprovider.Provider{
 			ServiceMap: map[string]interface{}{
 				outofbandsvc.Name:     &mockoutofband.MockService{},
+				outofbandv2.Name:      &mockoutofbandv2.MockService{},
 				didexdsvc.DIDExchange: &mocksvc.MockDIDExchangeSvc{},
 			},
 		}
@@ -74,6 +94,7 @@ func TestNew(t *testing.T) {
 		config.Aries = &mockprovider.Provider{
 			ServiceMap: map[string]interface{}{
 				outofbandsvc.Name:         &mockoutofband.MockService{},
+				outofbandv2.Name:          &mockoutofbandv2.MockService{},
 				mediatordsvc.Coordination: &mockroute.MockMediatorSvc{},
 			},
 		}
@@ -124,6 +145,60 @@ func TestGenerateInvitationHandler(t *testing.T) {
 		o.generateInvitation(w, nil)
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 		require.Contains(t, w.Body.String(), "failed to create router invitation")
+	})
+}
+
+func TestGenerateInvitationV2Handler(t *testing.T) {
+	reqData := DIDCommInvitationV2Req{
+		DID: "did:foo:bar",
+	}
+
+	reqBytes, err := json.Marshal(&reqData)
+	require.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		o, err := New(config())
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodPost, invitationV2Path, bytes.NewReader(reqBytes))
+
+		w := httptest.NewRecorder()
+		o.generateInvitationV2(w, req)
+		require.Equal(t, http.StatusOK, w.Code)
+
+		var result *DIDCommInvitationV2Resp
+		err = json.Unmarshal(w.Body.Bytes(), &result)
+		require.NoError(t, err)
+
+		require.NotEmpty(t, result.Invitation.ID)
+		require.Equal(t, result.Invitation.Label, "hub-router")
+		require.Equal(t, result.Invitation.Type, "https://didcomm.org/out-of-band/2.0/invitation")
+	})
+
+	t.Run("parse error", func(t *testing.T) {
+		o, err := New(config())
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodPost, invitationV2Path, bytes.NewReader([]byte("bad data")))
+
+		w := httptest.NewRecorder()
+		o.generateInvitationV2(w, req)
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		require.Contains(t, w.Body.String(), "error parsing request")
+	})
+
+	t.Run("create error", func(t *testing.T) {
+		o, err := New(config())
+		require.NoError(t, err)
+
+		o.oobv2 = &mockoutofbandv2.MockClient{CreateErr: errors.New("invitation error")}
+
+		req := httptest.NewRequest(http.MethodPost, invitationV2Path, bytes.NewReader(reqBytes))
+
+		w := httptest.NewRecorder()
+		o.generateInvitationV2(w, req)
+		require.Equal(t, http.StatusInternalServerError, w.Code)
+		require.Contains(t, w.Body.String(), "error creating invitation")
 	})
 }
 

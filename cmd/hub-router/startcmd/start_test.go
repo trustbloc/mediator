@@ -44,6 +44,7 @@ func TestGetStartCmd(t *testing.T) {
 			"--" + didCommWSHostFlagName, randomURL(t),
 			"--" + datasourcePersistentFlagName, "mem://tests",
 			"--" + datasourceTransientFlagName, "mem://tests",
+			"--" + didcommV2FlagName, "true",
 		}
 		startCmd.SetArgs(args)
 
@@ -225,6 +226,24 @@ func TestGetStartCmd(t *testing.T) {
 		_, err = initStore("invaldidb://test", "", 10)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "unsupported storage driver: invaldidb")
+	})
+
+	t.Run("invalid use-didcomm-v2 bool", func(t *testing.T) {
+		startCmd := GetStartCmd(&mockServer{})
+
+		args := []string{
+			"--" + hostURLFlagName, "localhost:8080",
+			"--" + didCommHTTPHostFlagName, randomURL(t),
+			"--" + didCommWSHostFlagName, randomURL(t),
+			"--" + datasourcePersistentFlagName, "mem://tests",
+			"--" + datasourceTransientFlagName, "mem://tests",
+			"--" + didcommV2FlagName, "AAAAH-BAD-DATA",
+		}
+		startCmd.SetArgs(args)
+
+		err := startCmd.Execute()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "parsing use-didcomm-v2 flag")
 	})
 }
 

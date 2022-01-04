@@ -21,9 +21,15 @@ import (
 	"github.com/hyperledger/aries-framework-go-ext/component/storage/mysql"
 	"github.com/hyperledger/aries-framework-go/component/storageutil/mem"
 	arieslog "github.com/hyperledger/aries-framework-go/pkg/common/log"
+	"github.com/hyperledger/aries-framework-go/pkg/controller/rest/kms"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/messaging/msghandler"
+	"github.com/hyperledger/aries-framework-go/pkg/didcomm/packer"
+	"github.com/hyperledger/aries-framework-go/pkg/didcomm/packer/anoncrypt"
+	"github.com/hyperledger/aries-framework-go/pkg/didcomm/packer/authcrypt"
+	legacyauthcrypt "github.com/hyperledger/aries-framework-go/pkg/didcomm/packer/legacy/authcrypt"
 	arieshttp "github.com/hyperledger/aries-framework-go/pkg/didcomm/transport/http"
 	ariesws "github.com/hyperledger/aries-framework-go/pkg/didcomm/transport/ws"
+	"github.com/hyperledger/aries-framework-go/pkg/doc/jose"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/defaults"
@@ -93,6 +99,11 @@ const (
 	tlsServeKeyPathFlagUsage = "Path to the private key to use when serving HTTPS." +
 		" Alternatively, this can be set with the following environment variable: " + tlsServeKeyPathFlagEnvKey
 	tlsServeKeyPathFlagEnvKey = "HUB_ROUTER_TLS_SERVE_KEY"
+
+	didcommV2FlagName  = "use-didcomm-v2"
+	didcommV2FlagUsage = "Use DIDComm V2. Possible values [true] [false]. Defaults to false if not set." +
+		" Alternatively, this can be set with the following environment variable: " + didcommV2EnvKey
+	didcommV2EnvKey = "USE_DIDCOMM_V2"
 )
 
 // Storage config.
@@ -173,6 +184,7 @@ type didCommParameters struct {
 	httpHostExternal string
 	wsHostInternal   string
 	wsHostExternal   string
+	useDIDCommV2     bool
 }
 
 type datasourceParams struct {
@@ -247,6 +259,7 @@ func createFlags(startCmd *cobra.Command) {
 	startCmd.Flags().StringP(didCommHTTPHostExternalFlagName, "", "", didCommHTTPHostExternalFlagUsage)
 	startCmd.Flags().StringP(didCommWSHostFlagName, "", "", didCommWSHostFlagUsage)
 	startCmd.Flags().StringP(didCommWSHostExternalFlagName, "", "", didCommWSHostExternalFlagUsage)
+	startCmd.Flags().StringP(didcommV2FlagName, "", "", didcommV2FlagUsage)
 
 	startCmd.Flags().StringP(logLevelFlagName, "", "INFO", logLevelFlagUsage)
 }
@@ -396,11 +409,26 @@ func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) {
 		return nil, err
 	}
 
+	useDIDCommV2String, err := cmdutils.GetUserSetVarFromString(cmd, didcommV2FlagName, didcommV2EnvKey, true)
+	if err != nil {
+		return nil, err
+	}
+
+	var useDIDCommV2 bool
+
+	if useDIDCommV2String != "" {
+		useDIDCommV2, err = strconv.ParseBool(useDIDCommV2String)
+		if err != nil {
+			return nil, fmt.Errorf("parsing use-didcomm-v2 flag: %w", err)
+		}
+	}
+
 	return &didCommParameters{
 		httpHostInternal: httpHostInternal,
 		httpHostExternal: httpHostExternal,
 		wsHostInternal:   wsHostInternal,
 		wsHostExternal:   wsHostExternal,
+		useDIDCommV2:     useDIDCommV2,
 	}, nil
 }
 
@@ -509,7 +537,13 @@ func addHandlers(params *hubRouterParameters, framework *aries.Aries, router *mu
 		return fmt.Errorf("add operation handlers: %w", err)
 	}
 
+	kmsHandlers := kms.New(ctx).GetRESTHandlers()
+
 	handlers := o.GetRESTHandlers()
+
+	for _, h := range kmsHandlers {
+		handlers = append(handlers, h)
+	}
 
 	for _, h := range handlers {
 		router.HandleFunc(h.Path(), h.Handle()).Methods(h.Method())
@@ -553,6 +587,24 @@ func createAriesAgent(parameters *hubRouterParameters, tlsConfig *tls.Config,
 		inboundWSTransportOpt,
 		aries.WithOutboundTransports(outboundHTTP, outboundWS),
 		aries.WithMessageServiceProvider(msgRegistrar),
+	}
+
+	if parameters.didCommParameters.useDIDCommV2 {
+		opts = append(opts,
+			aries.WithPacker(
+				func(provider packer.Provider) (packer.Packer, error) {
+					return authcrypt.New(provider, jose.A256CBCHS512)
+				},
+				func(provider packer.Provider) (packer.Packer, error) {
+					return authcrypt.New(provider, jose.A256CBCHS512)
+				},
+				func(provider packer.Provider) (packer.Packer, error) {
+					return anoncrypt.New(provider, jose.A256GCM)
+				},
+				func(provider packer.Provider) (packer.Packer, error) {
+					return legacyauthcrypt.New(provider), nil
+				},
+			))
 	}
 
 	framework, err := aries.New(opts...)
