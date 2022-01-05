@@ -24,6 +24,7 @@ services:
       - HUB_ROUTER_DSN_TRANSIENT=mongodb://mongodb.example.com:27017
       - HUB_ROUTER_DSN_TIMEOUT=45
       - HUB_ROUTER_LOGLEVEL=INFO
+      - USE_DIDCOMM_V2=true
     ports:
       - ${HUB_ROUTER_PORT}:${HUB_ROUTER_PORT}
       - ${HUB_ROUTER_DIDCOMM_HTTP_PORT}:${HUB_ROUTER_DIDCOMM_HTTP_PORT}

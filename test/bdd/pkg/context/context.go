@@ -14,7 +14,8 @@ import (
 
 // BDDContext is a global context shared between different test suites in bddtests.
 type BDDContext struct {
-	TLSConfig *tls.Config
+	TLSConfig   *tls.Config
+	SidetreeURL string
 }
 
 // NewBDDContext create new BDDContext.
@@ -25,6 +26,7 @@ func NewBDDContext(caCertPath string) (*BDDContext, error) {
 	}
 
 	return &BDDContext{
-		TLSConfig: &tls.Config{RootCAs: rootCAs, MinVersion: tls.VersionTLS12},
+		TLSConfig:   &tls.Config{RootCAs: rootCAs, MinVersion: tls.VersionTLS12},
+		SidetreeURL: "http://localhost:48326/sidetree/v1/",
 	}, nil
 }

@@ -8,6 +8,8 @@ package router
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -22,10 +24,16 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/client/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/client/outofband"
 	didexcmd "github.com/hyperledger/aries-framework-go/pkg/controller/command/didexchange"
+	cmdkms "github.com/hyperledger/aries-framework-go/pkg/controller/command/kms"
 	"github.com/hyperledger/aries-framework-go/pkg/controller/command/messaging"
 	oobcmd "github.com/hyperledger/aries-framework-go/pkg/controller/command/outofband"
+	oobv2cmd "github.com/hyperledger/aries-framework-go/pkg/controller/command/outofbandv2"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
+	"github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/outofbandv2"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
+	"github.com/hyperledger/aries-framework-go/pkg/doc/jose/jwk/jwksupport"
+	"github.com/hyperledger/aries-framework-go/test/bdd/pkg/sidetree"
+	"github.com/hyperledger/aries-framework-go/test/bdd/pkg/util"
 	"github.com/trustbloc/edge-core/pkg/log"
 
 	"github.com/trustbloc/hub-router/pkg/restapi/operation"
@@ -45,6 +53,8 @@ const (
 	// connection paths.
 	createInvitationPath   = "/outofband/create-invitation"
 	acceptInvitationPath   = "/outofband/accept-invitation"
+	createInvitationV2Path = "/outofband/2.0/create-invitation"
+	acceptInvitationV2Path = "/outofband/2.0/accept-invitation"
 	connectionsByIDPathFmt = "/connections/%s"
 	createConnectionPath   = "/connections/create"
 
@@ -70,28 +80,39 @@ const (
 type Steps struct {
 	bddContext           *context.BDDContext
 	routerInvitationStr  *outofband.Invitation
+	routerInvitationV2   *outofbandv2.Invitation
 	adapterInvitationStr *outofband.Invitation
+	adapterInvitationV2  *outofbandv2.Invitation
 	walletRouterConnID   string
 	walletAdapterConnID  string
 	adapterRouterConnID  string
 	adapterDID           string
 	routerDIDDoc         *did.Doc
+	serviceEndpoints     map[string]string
 }
 
 // NewSteps returns new agent from client SDK.
 func NewSteps(ctx *context.BDDContext) *Steps {
 	return &Steps{
 		bddContext: ctx,
+		serviceEndpoints: map[string]string{
+			hubRouterURL:  "https://hub-router.example.com:10201",
+			adapterAPIURL: "https://adapter-mock.example.com:10221",
+		},
 	}
 }
 
 // RegisterSteps registers agent steps.
 func (e *Steps) RegisterSteps(s *godog.Suite) {
 	s.Step(`^Wallet gets DIDComm invitation from hub-router$`, e.invitation)
+	s.Step(`^Wallet gets DIDComm V2 invitation from hub-router$`, e.invitationV2)
 	s.Step(`^Wallet connects with Router$`, e.connectWithRouter)
+	s.Step(`^Wallet connects with Router using DIDComm V2$`, e.connectWithRouterV2)
 	s.Step(`^Wallet registers with the Router for mediation$`, e.mediationRegistration)
 	s.Step(`^Wallet gets invitation from Adapter$`, e.adapterInvitation)
+	s.Step(`^Wallet gets DIDComm V2 invitation from Adapter$`, e.getAdapterInvitationV2)
 	s.Step(`^Wallet connects with Adapter$`, e.connectWithAdapter)
+	s.Step(`^Wallet connects with Adapter using DIDComm V2$`, e.connectWithAdapterV2)
 	s.Step(`^Wallet sends establish connection request for adapter$`, e.establishConnReq)
 	s.Step(`^Wallet passes the details of router to adapter$`, e.adapterEstablishConn)
 	s.Step(`^Adapter registers with the Router for mediation$`, e.routeRegistration)
@@ -122,12 +143,61 @@ func (e *Steps) invitation() error {
 		return fmt.Errorf("get invitation - marshal response :%w", err)
 	}
 
-	if result.Invitation.Type != "https://didcomm.org/out-of-band/1.0/invitation" {
-		return fmt.Errorf("invalid invitation type : expected=%s actual=%s",
-			"https://didcomm.org/out-of-band/1.0/invitation", result.Invitation.Type)
+	v1Type := "https://didcomm.org/out-of-band/1.0/invitation"
+	if result.Invitation.Type != v1Type {
+		return fmt.Errorf("invalid invitation type : expected=%s actual=%s", v1Type, result.Invitation.Type)
 	}
 
 	e.routerInvitationStr = result.Invitation
+
+	return nil
+}
+
+func (e *Steps) invitationV2() error {
+	pubDID, err := e.createPublicDID(hubRouterURL)
+	if err != nil {
+		return fmt.Errorf("creating public did: %w", err)
+	}
+
+	req := operation.DIDCommInvitationV2Req{
+		DID: pubDID,
+	}
+
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	resp, err := bddutil.HTTPDo(http.MethodGet, //nolint:bodyclose // false positive as body is closed in util function
+		hubRouterURL+"/didcomm/invitation-v2", "", "", bytes.NewBuffer(reqBytes), e.bddContext.TLSConfig)
+	if err != nil {
+		return err
+	}
+
+	defer bddutil.CloseResponseBody(resp.Body)
+
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("get invitation - read response : %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return bddutil.ExpectedStatusCodeError(http.StatusOK, resp.StatusCode, respBytes)
+	}
+
+	var result *operation.DIDCommInvitationV2Resp
+
+	err = json.Unmarshal(respBytes, &result)
+	if err != nil {
+		return fmt.Errorf("get invitation - marshal response :%w", err)
+	}
+
+	v2Type := "https://didcomm.org/out-of-band/2.0/invitation"
+	if result.Invitation.Type != v2Type {
+		return fmt.Errorf("invalid invitation type : expected=%s actual=%s", v2Type, result.Invitation.Type)
+	}
+
+	e.routerInvitationV2 = result.Invitation
 
 	return nil
 }
@@ -155,8 +225,37 @@ func (e *Steps) connectWithRouter() error {
 	return nil
 }
 
+func (e *Steps) connectWithRouterV2() error {
+	connID, err := e.connectV2(e.routerInvitationV2)
+	if err != nil {
+		return fmt.Errorf("connect with router : %w", err)
+	}
+
+	e.walletRouterConnID = connID
+
+	return nil
+}
+
 func (e *Steps) connectWithAdapter() error {
 	connID, err := e.connect(e.adapterInvitationStr, e.walletRouterConnID)
+	if err != nil {
+		return fmt.Errorf("connect with adapter : %w", err)
+	}
+
+	e.walletAdapterConnID = connID
+
+	conn, err := e.getConnection(walletAPIURL, connID)
+	if err != nil {
+		return fmt.Errorf("get connection: %w", err)
+	}
+
+	e.adapterDID = conn.TheirDID
+
+	return nil
+}
+
+func (e *Steps) connectWithAdapterV2() error {
+	connID, err := e.connectV2(e.adapterInvitationV2)
 	if err != nil {
 		return fmt.Errorf("connect with adapter : %w", err)
 	}
@@ -177,13 +276,29 @@ func (e *Steps) connect(invitation *outofband.Invitation, routerConnID string) (
 	// receive invitation
 	connID, err := e.receiveInvitation(invitation, routerConnID)
 	if err != nil {
-		return "", fmt.Errorf("receive inviation : %w", err)
+		return "", fmt.Errorf("receive invitation : %w", err)
 	}
 
 	// verify the connection
 	err = e.validateConnection(connID, "completed")
 	if err != nil {
 		return "", fmt.Errorf("validate connection : %w", err)
+	}
+
+	return connID, nil
+}
+
+func (e *Steps) connectV2(invitation *outofbandv2.Invitation) (string, error) {
+	// receive invitation
+	connID, err := e.receiveInvitationV2(invitation)
+	if err != nil {
+		return "", fmt.Errorf("receive invitation v2 : %w", err)
+	}
+
+	// verify the connection
+	err = e.validateConnection(connID, "completed")
+	if err != nil {
+		return "", fmt.Errorf("validate connection v2 : %w", err)
 	}
 
 	return connID, nil
@@ -230,12 +345,63 @@ func (e *Steps) adapterInvitation() error {
 		return fmt.Errorf("get invitation - marshal response :%w", err)
 	}
 
-	if result.Invitation.Type != "https://didcomm.org/out-of-band/1.0/invitation" {
-		return fmt.Errorf("invalid invitation type : expected=%s actual=%s",
-			"https://didcomm.org/out-of-band/1.0/invitation", result.Invitation.Type)
+	v1Type := "https://didcomm.org/out-of-band/1.0/invitation"
+
+	if result.Invitation.Type != v1Type {
+		return fmt.Errorf("invalid invitation type : expected=%s actual=%s", v1Type, result.Invitation.Type)
 	}
 
 	e.adapterInvitationStr = result.Invitation
+
+	return nil
+}
+
+func (e *Steps) getAdapterInvitationV2() error {
+	pubDID, err := e.createPublicDID(adapterAPIURL)
+	if err != nil {
+		return fmt.Errorf("creating public did: %w", err)
+	}
+
+	req := oobv2cmd.CreateInvitationArgs{
+		From: pubDID,
+	}
+
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	resp, err := bddutil.HTTPDo(http.MethodPost, //nolint:bodyclose // false positive as body is closed in util function
+		adapterAPIURL+createInvitationV2Path, "", "", bytes.NewBuffer(reqBytes), e.bddContext.TLSConfig)
+	if err != nil {
+		return err
+	}
+
+	defer bddutil.CloseResponseBody(resp.Body)
+
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("get invitation - read response : %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return bddutil.ExpectedStatusCodeError(http.StatusOK, resp.StatusCode, respBytes)
+	}
+
+	var result oobv2cmd.CreateInvitationResponse
+
+	err = json.Unmarshal(respBytes, &result)
+	if err != nil {
+		return fmt.Errorf("get invitation - marshal response :%w", err)
+	}
+
+	v2Type := "https://didcomm.org/out-of-band/2.0/invitation"
+
+	if result.Invitation.Type != v2Type {
+		return fmt.Errorf("invalid invitation type : expected=%s actual=%s", v2Type, result.Invitation.Type)
+	}
+
+	e.adapterInvitationV2 = result.Invitation
 
 	return nil
 }
@@ -270,6 +436,44 @@ func (e *Steps) receiveInvitation(invitation *outofband.Invitation, routerConnID
 	}
 
 	var connRes oobcmd.AcceptInvitationResponse
+
+	err = json.Unmarshal(respBytes, &connRes)
+	if err != nil {
+		return "", err
+	}
+
+	return connRes.ConnectionID, nil
+}
+
+func (e *Steps) receiveInvitationV2(invitation *outofbandv2.Invitation) (string, error) {
+	req := oobv2cmd.AcceptInvitationArgs{
+		Invitation: invitation,
+		MyLabel:    "wallet",
+	}
+
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := bddutil.HTTPDo(http.MethodPost, //nolint:bodyclose // false positive as body is closed in util function
+		walletAPIURL+acceptInvitationV2Path, "", "", bytes.NewBuffer(reqBytes), e.bddContext.TLSConfig)
+	if err != nil {
+		return "", err
+	}
+
+	defer bddutil.CloseResponseBody(resp.Body)
+
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", bddutil.ExpectedStatusCodeError(http.StatusOK, resp.StatusCode, respBytes)
+	}
+
+	var connRes oobv2cmd.AcceptInvitationResponse
 
 	err = json.Unmarshal(respBytes, &connRes)
 	if err != nil {
@@ -621,4 +825,110 @@ func (e *Steps) unregisterAllMsgServices(controllerURL string) error {
 	}
 
 	return nil
+}
+
+const (
+	kmsOperationID    = "/kms"
+	createKeySetPath  = kmsOperationID + "/keyset"
+	timeoutWaitForDID = 10 * time.Second
+)
+
+// createPublicDID creates a public sidetree DID for the given agent.
+func (e *Steps) createPublicDID( //nolint:funlen,gocyclo // func is self-contained and has single happy path
+	agentURL string) (string, error) {
+	path := fmt.Sprintf("%s%s", agentURL, createKeySetPath)
+
+	reqBytes, err := json.Marshal(cmdkms.CreateKeySetRequest{KeyType: "ED25519"})
+	if err != nil {
+		return "", err
+	}
+
+	var result cmdkms.CreateKeySetResponse
+
+	err = util.SendHTTP(http.MethodPost, path, reqBytes, &result)
+	if err != nil {
+		return "", err
+	}
+
+	// keys received from controller kms command are base64 RawURL encoded
+	verKey, err := base64.RawURLEncoding.DecodeString(result.PublicKey)
+	if err != nil {
+		return "", err
+	}
+
+	pubKeyEd25519 := ed25519.PublicKey(verKey)
+
+	j, err := jwksupport.JWKFromKey(pubKeyEd25519)
+	if err != nil {
+		return "", err
+	}
+
+	j.KeyID = result.KeyID
+
+	publicKeyRecovery, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return "", err
+	}
+
+	recoveryJWK, err := jwksupport.JWKFromKey(publicKeyRecovery)
+	if err != nil {
+		return "", err
+	}
+
+	publicKeyUpdate, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return "", err
+	}
+
+	updateJWK, err := jwksupport.JWKFromKey(publicKeyUpdate)
+	if err != nil {
+		return "", err
+	}
+
+	doc, err := sidetree.CreateDID(
+		&sidetree.CreateDIDParams{
+			URL:             e.bddContext.SidetreeURL + "operations",
+			KeyID:           result.KeyID,
+			JWK:             j,
+			RecoveryJWK:     recoveryJWK,
+			UpdateJWK:       updateJWK,
+			ServiceEndpoint: e.serviceEndpoints[agentURL],
+		})
+	if err != nil {
+		return "", err
+	}
+
+	err = e.waitForPublicDID(doc.ID)
+	if err != nil {
+		logger.Errorf("Failed to resolve public DID created, cause : %s", err)
+
+		return "", fmt.Errorf("failed to resolve public DID created, %w", err)
+	}
+
+	return doc.ID, nil
+}
+
+// waitForPublicDID wait for public DID to be available before throw error after timeout.
+func (e *Steps) waitForPublicDID(id string) error {
+	const retryDelay = 500 * time.Millisecond
+
+	start := time.Now()
+
+	for {
+		if time.Since(start) > timeoutWaitForDID {
+			break
+		}
+
+		err := util.SendHTTP(http.MethodGet, e.bddContext.SidetreeURL+"/identifiers/"+id, nil, nil)
+		if err != nil {
+			logger.Warnf("Failed to resolve public DID, due to error [%s] will retry", err)
+			time.Sleep(retryDelay)
+
+			continue
+		}
+
+		return nil
+	}
+
+	return fmt.Errorf("unable to resolve public DID [%s]", id)
 }

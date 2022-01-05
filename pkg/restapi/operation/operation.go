@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package operation
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hyperledger/aries-framework-go/pkg/client/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/client/outofband"
+	"github.com/hyperledger/aries-framework-go/pkg/client/outofbandv2"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/messaging/msghandler"
 	didexdsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/didexchange"
@@ -33,8 +35,9 @@ import (
 
 // API endpoints.
 const (
-	healthCheckPath = "/healthcheck"
-	invitationPath  = "/didcomm/invitation"
+	healthCheckPath  = "/healthcheck"
+	invitationPath   = "/didcomm/invitation"
+	invitationV2Path = "/didcomm/invitation-v2"
 )
 
 // Msg svc constants.
@@ -73,6 +76,7 @@ type Config struct {
 type Operation struct {
 	storage      *Storage
 	oob          aries.OutOfBand
+	oobv2        aries.OutOfBandV2
 	didExchange  aries.DIDExchange
 	mediator     aries.Mediator
 	messenger    service.Messenger
@@ -91,6 +95,11 @@ func New(config *Config) (*Operation, error) {
 		return nil, fmt.Errorf("out-of-band client: %w", err)
 	}
 
+	oobV2Client, err := aries.CreateOutOfBandV2Client(config.Aries)
+	if err != nil {
+		return nil, fmt.Errorf("out-of-band-v2 client: %w", err)
+	}
+
 	mediatorClient, err := aries.CreateMediatorClient(config.Aries, actionCh)
 	if err != nil {
 		return nil, fmt.Errorf("mediator client: %w", err)
@@ -104,6 +113,7 @@ func New(config *Config) (*Operation, error) {
 	o := &Operation{
 		storage:      config.Storage,
 		oob:          oobClient,
+		oobv2:        oobV2Client,
 		didExchange:  didExchangeClient,
 		mediator:     mediatorClient,
 		messenger:    config.AriesMessenger,
@@ -138,6 +148,7 @@ func (o *Operation) GetRESTHandlers() []Handler {
 
 		// router
 		support.NewHTTPHandler(invitationPath, http.MethodGet, o.generateInvitation),
+		support.NewHTTPHandler(invitationV2Path, http.MethodGet, o.generateInvitationV2),
 	}
 }
 
@@ -161,6 +172,27 @@ func (o *Operation) generateInvitation(rw http.ResponseWriter, _ *http.Request) 
 	}
 
 	httputil.WriteResponseWithLog(rw, &DIDCommInvitationResp{
+		Invitation: invitation,
+	}, invitationPath, logger)
+}
+
+func (o *Operation) generateInvitationV2(rw http.ResponseWriter, req *http.Request) {
+	var args DIDCommInvitationV2Req
+	if err := json.NewDecoder(req.Body).Decode(&args); err != nil {
+		httputil.WriteErrorResponseWithLog(rw, http.StatusBadRequest,
+			"error parsing request", invitationV2Path, logger)
+	}
+
+	// TODO configure hub-router label
+	invitation, err := o.oobv2.CreateInvitation(outofbandv2.WithFrom(args.DID), outofbandv2.WithLabel("hub-router"))
+	if err != nil {
+		httputil.WriteErrorResponseWithLog(rw, http.StatusInternalServerError,
+			"error creating invitation", invitationV2Path, logger)
+
+		return
+	}
+
+	httputil.WriteResponseWithLog(rw, &DIDCommInvitationV2Resp{
 		Invitation: invitation,
 	}, invitationPath, logger)
 }
