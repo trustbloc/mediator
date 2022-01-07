@@ -33,6 +33,8 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/defaults"
+	"github.com/hyperledger/aries-framework-go/pkg/framework/context"
+	kms2 "github.com/hyperledger/aries-framework-go/pkg/kms"
 	"github.com/hyperledger/aries-framework-go/spi/storage"
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
@@ -40,6 +42,7 @@ import (
 	cmdutils "github.com/trustbloc/edge-core/pkg/utils/cmd"
 	tlsutils "github.com/trustbloc/edge-core/pkg/utils/tls"
 
+	aries2 "github.com/trustbloc/hub-router/pkg/aries"
 	"github.com/trustbloc/hub-router/pkg/restapi/operation"
 )
 
@@ -99,11 +102,48 @@ const (
 	tlsServeKeyPathFlagUsage = "Path to the private key to use when serving HTTPS." +
 		" Alternatively, this can be set with the following environment variable: " + tlsServeKeyPathFlagEnvKey
 	tlsServeKeyPathFlagEnvKey = "HUB_ROUTER_TLS_SERVE_KEY"
+)
 
+// DIDComm config.
+const (
 	didcommV2FlagName  = "use-didcomm-v2"
 	didcommV2FlagUsage = "Use DIDComm V2. Possible values [true] [false]. Defaults to false if not set." +
 		" Alternatively, this can be set with the following environment variable: " + didcommV2EnvKey
-	didcommV2EnvKey = "USE_DIDCOMM_V2"
+	didcommV2EnvKey = "HUB_ROUTER_DIDCOMM_V2"
+
+	// default verification key type flag.
+	keyTypeFlagName = "key-type"
+	keyTypeEnvKey   = "HUB_ROUTER_KEY_TYPE"
+	keyTypeUsage    = "Default key type for router." +
+		" This flag sets the verification (and for DIDComm V1 encryption as well) key type used for key creation " +
+		"in the router. Alternatively, this can be set with the following environment variable: " +
+		keyTypeEnvKey
+
+	// default key agreement type flag.
+	keyAgreementTypeFlagName = "key-agreement-type"
+	keyAgreementTypeEnvKey   = "HUB_ROUTER_KEY_AGREEMENT_TYPE"
+	keyAgreementTypeUsage    = "Default key agreement type for router." +
+		" Default encryption (used in DIDComm V2) key type used for key agreement creation in the router." +
+		" Alternatively, this can be set with the following environment variable: " +
+		keyAgreementTypeEnvKey
+)
+
+//  Public DID config
+const (
+	orbDomainFlagName  = "orb-domain"
+	orbDomainFlagUsage = "Domain for the orb DID method instance where a public DID should be created." +
+		" Alternatively, this can be set with the following environment variable: " + orbDomainEnvKey
+	orbDomainEnvKey = "HUB_ROUTER_ORB_DOMAIN"
+
+	orbAnchorOriginFlagName  = "orb-anchor-origin"
+	orbAnchorOriginFlagUsage = "Orb DID method anchor origin for the router's DID. Optional." +
+		" Alternatively, this can be set with the following environment variable: " + orbAnchorOriginEnvKey
+	orbAnchorOriginEnvKey = "HUB_ROUTER_ORB_ANCHOR_ORIGIN"
+
+	orbOperationEndpointsFlagName  = "orb-operation-endpoints"
+	orbOperationEndpointsFlagUsage = "Comma-separated list of orb DID method operation endpoints. Optional." +
+		" Alternatively, this can be set with the following environment variable: " + orbOperationEndpointsEnvKey
+	orbOperationEndpointsEnvKey = "HUB_ROUTER_ORB_OPERATION_ENDPOINTS"
 )
 
 // Storage config.
@@ -185,6 +225,8 @@ type didCommParameters struct {
 	wsHostInternal   string
 	wsHostExternal   string
 	useDIDCommV2     bool
+	keyType          string
+	keyAgreementType string
 }
 
 type datasourceParams struct {
@@ -194,10 +236,17 @@ type datasourceParams struct {
 }
 
 type hubRouterParameters struct {
-	hostURL           string
-	tlsParams         *tlsParameters
-	datasourceParams  *datasourceParams
-	didCommParameters *didCommParameters
+	hostURL             string
+	tlsParams           *tlsParameters
+	datasourceParams    *datasourceParams
+	didCommParameters   *didCommParameters
+	orbClientParameters *orbClientParameters
+}
+
+type orbClientParameters struct {
+	domain             string
+	anchorOrigin       string
+	operationEndpoints []string
 }
 
 type server interface {
@@ -260,6 +309,13 @@ func createFlags(startCmd *cobra.Command) {
 	startCmd.Flags().StringP(didCommWSHostFlagName, "", "", didCommWSHostFlagUsage)
 	startCmd.Flags().StringP(didCommWSHostExternalFlagName, "", "", didCommWSHostExternalFlagUsage)
 	startCmd.Flags().StringP(didcommV2FlagName, "", "", didcommV2FlagUsage)
+	startCmd.Flags().StringP(keyTypeFlagName, "", "", keyTypeUsage)
+	startCmd.Flags().StringP(keyAgreementTypeFlagName, "", "", keyAgreementTypeUsage)
+
+	// orb client
+	startCmd.Flags().StringP(orbDomainFlagName, "", "", orbDomainFlagUsage)
+	startCmd.Flags().StringP(orbAnchorOriginFlagName, "", "", orbAnchorOriginFlagUsage)
+	startCmd.Flags().StringArrayP(orbOperationEndpointsFlagName, "", []string{}, orbOperationEndpointsFlagUsage)
 
 	startCmd.Flags().StringP(logLevelFlagName, "", "INFO", logLevelFlagUsage)
 }
@@ -286,6 +342,11 @@ func getHubRouterParameters(cmd *cobra.Command) (*hubRouterParameters, error) {
 		return nil, err
 	}
 
+	orbParams, err := getOrbClientParameters(cmd)
+	if err != nil {
+		return nil, err
+	}
+
 	logLevel, err := cmdutils.GetUserSetVarFromString(cmd, logLevelFlagName, logLevelEnvKey, true)
 	if err != nil {
 		return nil, err
@@ -303,10 +364,11 @@ func getHubRouterParameters(cmd *cobra.Command) (*hubRouterParameters, error) {
 	logger.Infof("logger level set to %s", logLevel)
 
 	return &hubRouterParameters{
-		hostURL:           hostURL,
-		tlsParams:         tlsParams,
-		datasourceParams:  dsParams,
-		didCommParameters: didCommParameters,
+		hostURL:             hostURL,
+		tlsParams:           tlsParams,
+		datasourceParams:    dsParams,
+		didCommParameters:   didCommParameters,
+		orbClientParameters: orbParams,
 	}, nil
 }
 
@@ -409,6 +471,16 @@ func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) {
 		return nil, err
 	}
 
+	keyType, err := cmdutils.GetUserSetVarFromString(cmd, keyTypeFlagName, keyTypeEnvKey, true)
+	if err != nil {
+		return nil, err
+	}
+
+	keyAgreementType, err := cmdutils.GetUserSetVarFromString(cmd, keyAgreementTypeFlagName, keyAgreementTypeEnvKey, true)
+	if err != nil {
+		return nil, err
+	}
+
 	useDIDCommV2String, err := cmdutils.GetUserSetVarFromString(cmd, didcommV2FlagName, didcommV2EnvKey, true)
 	if err != nil {
 		return nil, err
@@ -429,6 +501,34 @@ func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) {
 		wsHostInternal:   wsHostInternal,
 		wsHostExternal:   wsHostExternal,
 		useDIDCommV2:     useDIDCommV2,
+		keyType:          keyType,
+		keyAgreementType: keyAgreementType,
+	}, nil
+}
+
+func getOrbClientParameters(cmd *cobra.Command) (*orbClientParameters, error) {
+	orbDomain, err := cmdutils.GetUserSetVarFromString(cmd, orbDomainFlagName,
+		orbDomainEnvKey, false)
+	if err != nil {
+		return nil, err
+	}
+
+	orbAnchorOrigin, err := cmdutils.GetUserSetVarFromString(cmd, orbAnchorOriginFlagName,
+		orbAnchorOriginEnvKey, true)
+	if err != nil {
+		return nil, err
+	}
+
+	orbOperationEndpoints, err := cmdutils.GetUserSetVarFromArrayString(cmd, orbOperationEndpointsFlagName,
+		orbOperationEndpointsEnvKey, true)
+	if err != nil {
+		return nil, err
+	}
+
+	return &orbClientParameters{
+		domain:             orbDomain,
+		anchorOrigin:       orbAnchorOrigin,
+		operationEndpoints: orbOperationEndpoints,
 	}, nil
 }
 
@@ -463,7 +563,8 @@ func setAriesFrameworkLogLevel(logLevel string) error {
 	return nil
 }
 
-func startHubRouter(params *hubRouterParameters, srv server) error {
+func startHubRouter( // nolint:gocyclo // initialization apart from aries
+	params *hubRouterParameters, srv server) error {
 	switch {
 	case params.tlsParams.serveCertPath != "" && params.tlsParams.serveKeyPath == "":
 		return errors.New("cert path and key path are mandatory : missing key path")
@@ -478,14 +579,43 @@ func startHubRouter(params *hubRouterParameters, srv server) error {
 
 	msgRegistrar := msghandler.NewRegistrar()
 
-	framework, err := createAriesAgent(params, &tls.Config{RootCAs: rootCAs, MinVersion: tls.VersionTLS12}, msgRegistrar)
+	tlsConfig := &tls.Config{RootCAs: rootCAs, MinVersion: tls.VersionTLS12}
+
+	framework, err := createAriesAgent(params, tlsConfig, msgRegistrar)
 	if err != nil {
 		return err
 	}
 
+	ctx, err := framework.Context()
+	if err != nil {
+		return fmt.Errorf("aries-framework - get aries context : %w", err)
+	}
+
+	publicDID := ""
+
+	if params.didCommParameters.useDIDCommV2 {
+		didCommEndpoint := params.didCommParameters.httpHostExternal
+		if didCommEndpoint == "" {
+			didCommEndpoint = params.didCommParameters.httpHostInternal
+		}
+
+		res, e := aries2.GetPublicDID(ctx, &aries2.PublicDIDConfig{
+			TLSConfig:             tlsConfig,
+			OrbDomain:             params.orbClientParameters.domain,
+			OrbAnchorOrigin:       params.orbClientParameters.anchorOrigin,
+			OrbOperationEndpoints: params.orbClientParameters.operationEndpoints,
+			DIDCommEndPoint:       didCommEndpoint,
+		})
+		if e != nil {
+			return fmt.Errorf("creating public DID: %w", e)
+		}
+
+		publicDID = res
+	}
+
 	router := mux.NewRouter()
 
-	err = addHandlers(params, framework, router, msgRegistrar)
+	err = addHandlers(params, ctx, router, msgRegistrar, publicDID)
 	if err != nil {
 		return fmt.Errorf("failed to add handlers: %w", err)
 	}
@@ -512,26 +642,22 @@ func serveHubRouter(params *hubRouterParameters, srv server, router http.Handler
 	)
 }
 
-func addHandlers(params *hubRouterParameters, framework *aries.Aries, router *mux.Router,
-	msgRegistrar *msghandler.Registrar) error {
+func addHandlers(params *hubRouterParameters, ctx *context.Provider, router *mux.Router,
+	msgRegistrar *msghandler.Registrar, publicDID string) error {
 	store, tStore, err := initStores(params.datasourceParams, "", "_txn")
 	if err != nil {
 		return err
 	}
 
-	ctx, err := framework.Context()
-	if err != nil {
-		return fmt.Errorf("aries-framework - get aries context : %w", err)
-	}
-
 	o, err := operation.New(&operation.Config{
 		Aries:          ctx,
-		AriesMessenger: framework.Messenger(),
+		AriesMessenger: ctx.Messenger(),
 		MsgRegistrar:   msgRegistrar,
 		Storage: &operation.Storage{
 			Persistent: store,
 			Transient:  tStore,
 		},
+		PublicDID: publicDID,
 	})
 	if err != nil {
 		return fmt.Errorf("add operation handlers: %w", err)
@@ -552,8 +678,30 @@ func addHandlers(params *hubRouterParameters, framework *aries.Aries, router *mu
 	return nil
 }
 
-func createAriesAgent(parameters *hubRouterParameters, tlsConfig *tls.Config,
-	msgRegistrar api.MessageServiceProvider) (*aries.Aries, error) {
+var (
+	//nolint:gochecknoglobals // translation tables copied from afgo for consistency
+	keyTypes = map[string]kms2.KeyType{
+		"ed25519":           kms2.ED25519Type,
+		"ecdsap256ieee1363": kms2.ECDSAP256TypeIEEEP1363,
+		"ecdsap256der":      kms2.ECDSAP256TypeDER,
+		"ecdsap384ieee1363": kms2.ECDSAP384TypeIEEEP1363,
+		"ecdsap384der":      kms2.ECDSAP384TypeDER,
+		"ecdsap521ieee1363": kms2.ECDSAP521TypeIEEEP1363,
+		"ecdsap521der":      kms2.ECDSAP521TypeDER,
+	}
+
+	//nolint:gochecknoglobals // translation tables copied from afgo for consistency
+	keyAgreementTypes = map[string]kms2.KeyType{
+		"x25519kw": kms2.X25519ECDHKWType,
+		"p256kw":   kms2.NISTP256ECDHKWType,
+		"p384kw":   kms2.NISTP384ECDHKWType,
+		"p521kw":   kms2.NISTP521ECDHKWType,
+	}
+)
+
+func createAriesAgent( // nolint:funlen // contains all aries initialization
+	parameters *hubRouterParameters, tlsConfig *tls.Config, msgRegistrar api.MessageServiceProvider,
+) (*aries.Aries, error) {
 	store, tStore, err := initStores(parameters.datasourceParams, "_aries", "_ariesps")
 	if err != nil {
 		return nil, fmt.Errorf("init storage: %w", err)
@@ -587,6 +735,16 @@ func createAriesAgent(parameters *hubRouterParameters, tlsConfig *tls.Config,
 		inboundWSTransportOpt,
 		aries.WithOutboundTransports(outboundHTTP, outboundWS),
 		aries.WithMessageServiceProvider(msgRegistrar),
+		aries.WithKeyType(kms2.ECDSAP256TypeIEEEP1363),
+		aries.WithKeyAgreementType(kms2.NISTP256ECDHKWType),
+	}
+
+	if kt, ok := keyTypes[parameters.didCommParameters.keyType]; ok {
+		opts = append(opts, aries.WithKeyType(kt))
+	}
+
+	if kat, ok := keyAgreementTypes[parameters.didCommParameters.keyAgreementType]; ok {
+		opts = append(opts, aries.WithKeyAgreementType(kat))
 	}
 
 	if parameters.didCommParameters.useDIDCommV2 {

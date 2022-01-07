@@ -23,6 +23,8 @@ services:
       - ARIESD_HTTP_RESOLVER=sidetree@http://router.bdd.sidetree.mock:48326/sidetree/v1/identifiers
       - TLS_CERT_FILE=/etc/tls/ec-pubCert.pem
       - TLS_KEY_FILE=/etc/tls/ec-key.pem
+      - ARIESD_KEY_TYPE=${AGENT_KEY_TYPE}
+      - ARIESD_KEY_AGREEMENT_TYPE=${AGENT_KEY_AGREEMENT_TYPE}
     ports:
       - ${WALLET_AGENT_API_PORT}:${WALLET_AGENT_API_PORT}
     entrypoint: ""
@@ -61,6 +63,8 @@ services:
       - ARIESD_HTTP_RESOLVER=sidetree@http://router.bdd.sidetree.mock:48326/sidetree/v1/identifiers
       - TLS_CERT_FILE=/etc/tls/ec-pubCert.pem
       - TLS_KEY_FILE=/etc/tls/ec-key.pem
+      - ARIESD_KEY_TYPE=${AGENT_KEY_TYPE}
+      - ARIESD_KEY_AGREEMENT_TYPE=${AGENT_KEY_AGREEMENT_TYPE}
     volumes:
       - ../keys/tls:/etc/tls
     ports:
