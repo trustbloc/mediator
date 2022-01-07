@@ -38,4 +38,7 @@ else
   fi
 fi
 
+# run didcomm v2 separately, with overridden key types
+HUB_ROUTER_DIDCOMM_V2=true AGENT_KEY_TYPE=ecdsap256ieee1363 AGENT_KEY_AGREEMENT_TYPE=p256kw go test -count=1 -v -cover . -p 1 -timeout=30m -run didcomm_v2
+
 cd $PWD

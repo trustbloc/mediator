@@ -27,6 +27,6 @@ func NewBDDContext(caCertPath string) (*BDDContext, error) {
 
 	return &BDDContext{
 		TLSConfig:   &tls.Config{RootCAs: rootCAs, MinVersion: tls.VersionTLS12},
-		SidetreeURL: "http://localhost:48326/sidetree/v1/",
+		SidetreeURL: "https://localhost:9443/sidetree/v1/",
 	}, nil
 }

@@ -20,9 +20,11 @@ services:
       - ARIESD_TRANSPORT_RETURN_ROUTE=${TRANSPORT_RETURN_OPTION_ALL}
       - ARIESD_AUTO_ACCEPT=true
       - ARIESD_WEBHOOK_URL=http://wallet-webhook-mock.example.com:${WALLET_WEBHOOK_PORT}
-      - ARIESD_HTTP_RESOLVER=sidetree@http://router.bdd.sidetree.mock:48326/sidetree/v1/identifiers
+      - ARIESD_TRUSTBLOC_DOMAIN=testnet.orb.local
       - TLS_CERT_FILE=/etc/tls/ec-pubCert.pem
       - TLS_KEY_FILE=/etc/tls/ec-key.pem
+      - ARIESD_KEY_TYPE=${AGENT_KEY_TYPE}
+      - ARIESD_KEY_AGREEMENT_TYPE=${AGENT_KEY_AGREEMENT_TYPE}
     ports:
       - ${WALLET_AGENT_API_PORT}:${WALLET_AGENT_API_PORT}
     entrypoint: ""
@@ -58,9 +60,11 @@ services:
       - ARIESD_DATABASE_TYPE=leveldb
       - ARIESD_DATABASE_PREFIX=aries_adapter
       - ARIESD_DATABASE_TIMEOUT=60
-      - ARIESD_HTTP_RESOLVER=sidetree@http://router.bdd.sidetree.mock:48326/sidetree/v1/identifiers
+      - ARIESD_TRUSTBLOC_DOMAIN=testnet.orb.local
       - TLS_CERT_FILE=/etc/tls/ec-pubCert.pem
       - TLS_KEY_FILE=/etc/tls/ec-key.pem
+      - ARIESD_KEY_TYPE=${AGENT_KEY_TYPE}
+      - ARIESD_KEY_AGREEMENT_TYPE=${AGENT_KEY_AGREEMENT_TYPE}
     volumes:
       - ../keys/tls:/etc/tls
     ports:

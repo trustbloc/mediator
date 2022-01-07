@@ -175,18 +175,6 @@ func TestGenerateInvitationV2Handler(t *testing.T) {
 		require.Equal(t, result.Invitation.Type, "https://didcomm.org/out-of-band/2.0/invitation")
 	})
 
-	t.Run("parse error", func(t *testing.T) {
-		o, err := New(config())
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodPost, invitationV2Path, bytes.NewReader([]byte("bad data")))
-
-		w := httptest.NewRecorder()
-		o.generateInvitationV2(w, req)
-		require.Equal(t, http.StatusBadRequest, w.Code)
-		require.Contains(t, w.Body.String(), "error parsing request")
-	})
-
 	t.Run("create error", func(t *testing.T) {
 		o, err := New(config())
 		require.NoError(t, err)

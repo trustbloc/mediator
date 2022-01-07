@@ -20,7 +20,7 @@ keyUsage = Digital Signature, Key Encipherment
 subjectAltName = @alt_names
 [alt_names]
 DNS.1 = localhost
-DNS.2 = *.trustbloc.local
+DNS.2 = testnet.orb.local
 DNS.3 = *.example.com" >> "$tmp"
 
 #create CA
