@@ -28,6 +28,7 @@ services:
       - HUB_ROUTER_ORB_DOMAINS=testnet.orb.local
       - HUB_ROUTER_KEY_TYPE=${AGENT_KEY_TYPE}
       - HUB_ROUTER_KEY_AGREEMENT_TYPE=${AGENT_KEY_AGREEMENT_TYPE}
+      - HUB_ROUTER_HTTP_RESOLVER=orb@https://testnet.orb.local/sidetree/v1/identifiers
     ports:
       - ${HUB_ROUTER_PORT}:${HUB_ROUTER_PORT}
       - ${HUB_ROUTER_DIDCOMM_HTTP_PORT}:${HUB_ROUTER_DIDCOMM_HTTP_PORT}
