@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package operation
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -70,6 +69,7 @@ type Config struct {
 	AriesMessenger service.Messenger
 	MsgRegistrar   *msghandler.Registrar
 	Storage        *Storage
+	PublicDID      string
 }
 
 // Operation implements hub-router operations.
@@ -83,6 +83,7 @@ type Operation struct {
 	vdriRegistry vdrapi.Registry
 	keyManager   kms.KeyManager
 	endpoint     string
+	publicDID    string
 }
 
 // New returns a new Operation.
@@ -120,6 +121,7 @@ func New(config *Config) (*Operation, error) {
 		vdriRegistry: config.Aries.VDRegistry(),
 		endpoint:     config.Aries.RouterEndpoint(),
 		keyManager:   config.Aries.KMS(),
+		publicDID:    config.PublicDID,
 	}
 
 	msgCh := make(chan service.DIDCommMsg, 1)
@@ -176,15 +178,9 @@ func (o *Operation) generateInvitation(rw http.ResponseWriter, _ *http.Request) 
 	}, invitationPath, logger)
 }
 
-func (o *Operation) generateInvitationV2(rw http.ResponseWriter, req *http.Request) {
-	var args DIDCommInvitationV2Req
-	if err := json.NewDecoder(req.Body).Decode(&args); err != nil {
-		httputil.WriteErrorResponseWithLog(rw, http.StatusBadRequest,
-			"error parsing request", invitationV2Path, logger)
-	}
-
+func (o *Operation) generateInvitationV2(rw http.ResponseWriter, _ *http.Request) {
 	// TODO configure hub-router label
-	invitation, err := o.oobv2.CreateInvitation(outofbandv2.WithFrom(args.DID), outofbandv2.WithLabel("hub-router"))
+	invitation, err := o.oobv2.CreateInvitation(outofbandv2.WithFrom(o.publicDID), outofbandv2.WithLabel("hub-router"))
 	if err != nil {
 		httputil.WriteErrorResponseWithLog(rw, http.StatusInternalServerError,
 			"error creating invitation", invitationV2Path, logger)

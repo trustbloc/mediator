@@ -7,11 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package startcmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
+	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
 	"github.com/phayes/freeport"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -34,9 +37,32 @@ func TestHTTPServer_ListenAndServeTLS(t *testing.T) {
 	require.Contains(t, err.Error(), "address wronghost: missing port in address")
 }
 
+type closeFunc func()
+
+func dummySidetree(t *testing.T) (string, closeFunc) {
+	t.Helper()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		b, err := json.Marshal(did.DocResolution{
+			DIDDocument: &did.Doc{ID: "did:orb:test", Context: []string{did.ContextV1}},
+		})
+		require.NoError(t, err)
+
+		_, err = w.Write(b)
+		require.NoError(t, err)
+	}))
+
+	return srv.URL, func() {
+		srv.Close()
+	}
+}
+
 func TestGetStartCmd(t *testing.T) {
 	t.Run("valid args", func(t *testing.T) {
 		startCmd := GetStartCmd(&mockServer{})
+
+		orbDomain, closeOrb := dummySidetree(t)
+		defer closeOrb()
 
 		args := []string{
 			"--" + hostURLFlagName, "localhost:8080",
@@ -44,7 +70,8 @@ func TestGetStartCmd(t *testing.T) {
 			"--" + didCommWSHostFlagName, randomURL(t),
 			"--" + datasourcePersistentFlagName, "mem://tests",
 			"--" + datasourceTransientFlagName, "mem://tests",
-			"--" + didcommV2FlagName, "true",
+			"--" + didcommV2FlagName, "false",
+			"--" + orbDomainsFlagName, orbDomain,
 		}
 		startCmd.SetArgs(args)
 
@@ -136,6 +163,7 @@ func TestGetStartCmd(t *testing.T) {
 			"--" + didCommWSHostFlagName, randomURL(t),
 			"--" + datasourcePersistentFlagName, "UNSUPPORTED://",
 			"--" + datasourceTransientFlagName, "mem://tests",
+			"--" + orbDomainsFlagName, "testnet.orb.trustbloc.local",
 		}
 		startCmd.SetArgs(args)
 
@@ -153,6 +181,7 @@ func TestGetStartCmd(t *testing.T) {
 			"--" + didCommWSHostFlagName, randomURL(t),
 			"--" + datasourcePersistentFlagName, "malformed",
 			"--" + datasourceTransientFlagName, "mem://tests",
+			"--" + orbDomainsFlagName, "testnet.orb.trustbloc.local",
 		}
 		startCmd.SetArgs(args)
 
@@ -219,7 +248,7 @@ func TestGetStartCmd(t *testing.T) {
 			datasourceParams: &datasourceParams{},
 		}
 
-		err := addHandlers(parameters, nil, nil, nil)
+		err := addHandlers(parameters, nil, nil, nil, "")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "init persistent storage: invalid dbURL")
 
@@ -245,9 +274,51 @@ func TestGetStartCmd(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "parsing use-didcomm-v2 flag")
 	})
+
+	t.Run("missing orb domain", func(t *testing.T) {
+		startCmd := GetStartCmd(&mockServer{})
+
+		args := []string{
+			"--" + hostURLFlagName, "localhost:8080",
+			"--" + didCommHTTPHostFlagName, randomURL(t),
+			"--" + didCommWSHostFlagName, randomURL(t),
+			"--" + datasourcePersistentFlagName, "mem://tests",
+			"--" + datasourceTransientFlagName, "mem://tests",
+		}
+		startCmd.SetArgs(args)
+
+		err := startCmd.Execute()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Neither orb-domain")
+	})
 }
 
 func TestStartHubRouter(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		orbDomain, closeOrb := dummySidetree(t)
+		defer closeOrb()
+
+		params := &hubRouterParameters{
+			hostURL:   "localhost:8080",
+			tlsParams: &tlsParameters{},
+			datasourceParams: &datasourceParams{
+				persistentURL: "mem://tests",
+				transientURL:  "mem://tests",
+			},
+			didCommParameters: &didCommParameters{
+				httpHostInternal: randomURL(t),
+				wsHostInternal:   randomURL(t),
+				useDIDCommV2:     false,
+			},
+			orbClientParameters: &orbClientParameters{
+				domains: []string{orbDomain},
+			},
+		}
+
+		err := startHubRouter(params, &mockServer{})
+		require.NoError(t, err)
+	})
+
 	t.Run("missing tls configs", func(t *testing.T) {
 		tlsParams := &tlsParameters{
 			serveKeyPath: "/test",
@@ -293,6 +364,27 @@ func TestStartHubRouter(t *testing.T) {
 		err := serveHubRouter(params, &mockServer{}, nil)
 		require.NoError(t, err)
 	})
+
+	t.Run("fail: initializing public DID", func(t *testing.T) {
+		params := &hubRouterParameters{
+			hostURL:   "localhost:8080",
+			tlsParams: &tlsParameters{},
+			datasourceParams: &datasourceParams{
+				persistentURL: "mem://tests",
+				transientURL:  "mem://tests",
+			},
+			didCommParameters: &didCommParameters{
+				httpHostInternal: randomURL(t),
+				wsHostInternal:   randomURL(t),
+				useDIDCommV2:     true,
+			},
+			orbClientParameters: &orbClientParameters{},
+		}
+
+		err := startHubRouter(params, &mockServer{})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "creating public DID")
+	})
 }
 
 func TestSupportedDatabases(t *testing.T) {
@@ -302,7 +394,6 @@ func TestSupportedDatabases(t *testing.T) {
 		expectedErrMsg string
 	}{
 		{dbURL: "mem://test", isErr: false},
-		{dbURL: "mysql://test", isErr: true, expectedErrMsg: "store init - connect to storage at test"},
 		{dbURL: "mongodb://", isErr: true, expectedErrMsg: "store init - connect to storage at mongodb://"},
 		{dbURL: "random", isErr: true, expectedErrMsg: "invalid dbURL random"},
 	}

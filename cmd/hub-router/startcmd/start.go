@@ -18,10 +18,9 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gorilla/mux"
 	"github.com/hyperledger/aries-framework-go-ext/component/storage/mongodb"
-	"github.com/hyperledger/aries-framework-go-ext/component/storage/mysql"
 	"github.com/hyperledger/aries-framework-go/component/storageutil/mem"
 	arieslog "github.com/hyperledger/aries-framework-go/pkg/common/log"
-	"github.com/hyperledger/aries-framework-go/pkg/controller/rest/kms"
+	kmsrest "github.com/hyperledger/aries-framework-go/pkg/controller/rest/kms"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/messaging/msghandler"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/packer"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/packer/anoncrypt"
@@ -33,6 +32,8 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/defaults"
+	"github.com/hyperledger/aries-framework-go/pkg/framework/context"
+	"github.com/hyperledger/aries-framework-go/pkg/kms"
 	"github.com/hyperledger/aries-framework-go/spi/storage"
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
@@ -40,6 +41,7 @@ import (
 	cmdutils "github.com/trustbloc/edge-core/pkg/utils/cmd"
 	tlsutils "github.com/trustbloc/edge-core/pkg/utils/tls"
 
+	hubaries "github.com/trustbloc/hub-router/pkg/aries"
 	"github.com/trustbloc/hub-router/pkg/restapi/operation"
 )
 
@@ -99,11 +101,38 @@ const (
 	tlsServeKeyPathFlagUsage = "Path to the private key to use when serving HTTPS." +
 		" Alternatively, this can be set with the following environment variable: " + tlsServeKeyPathFlagEnvKey
 	tlsServeKeyPathFlagEnvKey = "HUB_ROUTER_TLS_SERVE_KEY"
+)
 
+// DIDComm config.
+const (
 	didcommV2FlagName  = "use-didcomm-v2"
 	didcommV2FlagUsage = "Use DIDComm V2. Possible values [true] [false]. Defaults to false if not set." +
 		" Alternatively, this can be set with the following environment variable: " + didcommV2EnvKey
-	didcommV2EnvKey = "USE_DIDCOMM_V2"
+	didcommV2EnvKey = "HUB_ROUTER_DIDCOMM_V2"
+
+	// default verification key type flag.
+	keyTypeFlagName = "key-type"
+	keyTypeEnvKey   = "HUB_ROUTER_KEY_TYPE"
+	keyTypeUsage    = "Default key type for router." +
+		" This flag sets the verification (and for DIDComm V1 encryption as well) key type used for key creation " +
+		"in the router. Alternatively, this can be set with the following environment variable: " +
+		keyTypeEnvKey
+
+	// default key agreement type flag.
+	keyAgreementTypeFlagName = "key-agreement-type"
+	keyAgreementTypeEnvKey   = "HUB_ROUTER_KEY_AGREEMENT_TYPE"
+	keyAgreementTypeUsage    = "Default key agreement type for router." +
+		" Default encryption (used in DIDComm V2) key type used for key agreement creation in the router." +
+		" Alternatively, this can be set with the following environment variable: " +
+		keyAgreementTypeEnvKey
+)
+
+//  Public DID config
+const (
+	orbDomainsFlagName  = "orb-domains"
+	orbDomainsFlagUsage = "Comma-separated list of orb DID domains." +
+		" Alternatively, this can be set with the following environment variable: " + orbDomainsEnvKey
+	orbDomainsEnvKey = "HUB_ROUTER_ORB_DOMAINS"
 )
 
 // Storage config.
@@ -113,18 +142,16 @@ const (
 	datasourcePersistentFlagName  = "dsn-p"
 	datasourcePersistentFlagUsage = "Persistent datasource Name with credentials if required." +
 		" Format must be <driver>:[//]<driver-specific-dsn>." +
-		" Examples: 'mysql://root:secret@tcp(localhost:3306)/hubrouter', 'mem://test'," +
-		" 'mongodb://mongodb.example.com:27017'." +
-		" Supported drivers are [mem, mysql, mongodb]." +
+		" Examples: 'mongodb://mongodb.example.com:27017'." +
+		" Supported drivers are [mem, mongodb]." +
 		" Alternatively, this can be set with the following environment variable: " + datasourcePersistentEnvKey
 	datasourcePersistentEnvKey = "HUB_ROUTER_DSN_PERSISTENT"
 
 	datasourceTransientFlagName  = "dsn-t"
 	datasourceTransientFlagUsage = "Datasource Name with credentials if required." +
 		" Format must be <driver>:[//]<driver-specific-dsn>." +
-		" Examples: 'mysql://root:secret@tcp(localhost:3306)/hubrouter', 'mem://test'," +
-		" 'mongodb://mongodb.example.com:27017'." +
-		" Supported drivers are [mem, mysql, mongodb]." +
+		" Examples: 'mongodb://mongodb.example.com:27017'." +
+		" Supported drivers are [mem, mongodb]." +
 		" Alternatively, this can be set with the following environment variable: " + datasourceTransientEnvKey
 	datasourceTransientEnvKey = "HUB_ROUTER_DSN_TRANSIENT"
 
@@ -152,7 +179,6 @@ const (
 // Database types.
 const (
 	databaseTypeMemOption     = "mem"
-	databaseTypeMySQLOption   = "mysql"
 	databaseTypeMongoDBOption = "mongodb"
 )
 
@@ -160,9 +186,6 @@ var logger = log.New("hub-router")
 
 // nolint:gochecknoglobals // we map the <driver> portion of datasource URLs to this map's keys
 var supportedStorageProviders = map[string]func(string, string) (storage.Provider, error){
-	databaseTypeMySQLOption: func(dsn, prefix string) (storage.Provider, error) {
-		return mysql.NewProvider(dsn, mysql.WithDBPrefix(prefix))
-	},
 	databaseTypeMemOption: func(
 		_, _ string) (storage.Provider, error) { // nolint:unparam // memstorage provider never returns error
 		return mem.NewProvider(), nil
@@ -185,6 +208,8 @@ type didCommParameters struct {
 	wsHostInternal   string
 	wsHostExternal   string
 	useDIDCommV2     bool
+	keyType          string
+	keyAgreementType string
 }
 
 type datasourceParams struct {
@@ -194,10 +219,15 @@ type datasourceParams struct {
 }
 
 type hubRouterParameters struct {
-	hostURL           string
-	tlsParams         *tlsParameters
-	datasourceParams  *datasourceParams
-	didCommParameters *didCommParameters
+	hostURL             string
+	tlsParams           *tlsParameters
+	datasourceParams    *datasourceParams
+	didCommParameters   *didCommParameters
+	orbClientParameters *orbClientParameters
+}
+
+type orbClientParameters struct {
+	domains []string
 }
 
 type server interface {
@@ -260,6 +290,11 @@ func createFlags(startCmd *cobra.Command) {
 	startCmd.Flags().StringP(didCommWSHostFlagName, "", "", didCommWSHostFlagUsage)
 	startCmd.Flags().StringP(didCommWSHostExternalFlagName, "", "", didCommWSHostExternalFlagUsage)
 	startCmd.Flags().StringP(didcommV2FlagName, "", "", didcommV2FlagUsage)
+	startCmd.Flags().StringP(keyTypeFlagName, "", "", keyTypeUsage)
+	startCmd.Flags().StringP(keyAgreementTypeFlagName, "", "", keyAgreementTypeUsage)
+
+	// orb client
+	startCmd.Flags().StringArrayP(orbDomainsFlagName, "", []string{}, orbDomainsFlagUsage)
 
 	startCmd.Flags().StringP(logLevelFlagName, "", "INFO", logLevelFlagUsage)
 }
@@ -286,6 +321,11 @@ func getHubRouterParameters(cmd *cobra.Command) (*hubRouterParameters, error) {
 		return nil, err
 	}
 
+	orbParams, err := getOrbClientParameters(cmd)
+	if err != nil {
+		return nil, err
+	}
+
 	logLevel, err := cmdutils.GetUserSetVarFromString(cmd, logLevelFlagName, logLevelEnvKey, true)
 	if err != nil {
 		return nil, err
@@ -303,10 +343,11 @@ func getHubRouterParameters(cmd *cobra.Command) (*hubRouterParameters, error) {
 	logger.Infof("logger level set to %s", logLevel)
 
 	return &hubRouterParameters{
-		hostURL:           hostURL,
-		tlsParams:         tlsParams,
-		datasourceParams:  dsParams,
-		didCommParameters: didCommParameters,
+		hostURL:             hostURL,
+		tlsParams:           tlsParams,
+		datasourceParams:    dsParams,
+		didCommParameters:   didCommParameters,
+		orbClientParameters: orbParams,
 	}, nil
 }
 
@@ -409,6 +450,16 @@ func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) {
 		return nil, err
 	}
 
+	keyType, err := cmdutils.GetUserSetVarFromString(cmd, keyTypeFlagName, keyTypeEnvKey, true)
+	if err != nil {
+		return nil, err
+	}
+
+	keyAgreementType, err := cmdutils.GetUserSetVarFromString(cmd, keyAgreementTypeFlagName, keyAgreementTypeEnvKey, true)
+	if err != nil {
+		return nil, err
+	}
+
 	useDIDCommV2String, err := cmdutils.GetUserSetVarFromString(cmd, didcommV2FlagName, didcommV2EnvKey, true)
 	if err != nil {
 		return nil, err
@@ -429,6 +480,20 @@ func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) {
 		wsHostInternal:   wsHostInternal,
 		wsHostExternal:   wsHostExternal,
 		useDIDCommV2:     useDIDCommV2,
+		keyType:          keyType,
+		keyAgreementType: keyAgreementType,
+	}, nil
+}
+
+func getOrbClientParameters(cmd *cobra.Command) (*orbClientParameters, error) {
+	orbDomains, err := cmdutils.GetUserSetVarFromArrayString(cmd, orbDomainsFlagName,
+		orbDomainsEnvKey, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return &orbClientParameters{
+		domains: orbDomains,
 	}, nil
 }
 
@@ -463,7 +528,8 @@ func setAriesFrameworkLogLevel(logLevel string) error {
 	return nil
 }
 
-func startHubRouter(params *hubRouterParameters, srv server) error {
+func startHubRouter( // nolint:gocyclo // initialization apart from aries
+	params *hubRouterParameters, srv server) error {
 	switch {
 	case params.tlsParams.serveCertPath != "" && params.tlsParams.serveKeyPath == "":
 		return errors.New("cert path and key path are mandatory : missing key path")
@@ -478,14 +544,41 @@ func startHubRouter(params *hubRouterParameters, srv server) error {
 
 	msgRegistrar := msghandler.NewRegistrar()
 
-	framework, err := createAriesAgent(params, &tls.Config{RootCAs: rootCAs, MinVersion: tls.VersionTLS12}, msgRegistrar)
+	tlsConfig := &tls.Config{RootCAs: rootCAs, MinVersion: tls.VersionTLS12}
+
+	framework, err := createAriesAgent(params, tlsConfig, msgRegistrar)
 	if err != nil {
 		return err
 	}
 
+	ctx, err := framework.Context()
+	if err != nil {
+		return fmt.Errorf("aries-framework - get aries context : %w", err)
+	}
+
+	publicDID := ""
+
+	if params.didCommParameters.useDIDCommV2 {
+		didCommEndpoint := params.didCommParameters.httpHostExternal
+		if didCommEndpoint == "" {
+			didCommEndpoint = params.didCommParameters.httpHostInternal
+		}
+
+		res, e := hubaries.GetPublicDID(ctx, &hubaries.PublicDIDConfig{
+			TLSConfig:       tlsConfig,
+			OrbDomains:      params.orbClientParameters.domains,
+			DIDCommEndPoint: didCommEndpoint,
+		})
+		if e != nil {
+			return fmt.Errorf("creating public DID: %w", e)
+		}
+
+		publicDID = res
+	}
+
 	router := mux.NewRouter()
 
-	err = addHandlers(params, framework, router, msgRegistrar)
+	err = addHandlers(params, ctx, router, msgRegistrar, publicDID)
 	if err != nil {
 		return fmt.Errorf("failed to add handlers: %w", err)
 	}
@@ -512,32 +605,28 @@ func serveHubRouter(params *hubRouterParameters, srv server, router http.Handler
 	)
 }
 
-func addHandlers(params *hubRouterParameters, framework *aries.Aries, router *mux.Router,
-	msgRegistrar *msghandler.Registrar) error {
+func addHandlers(params *hubRouterParameters, ctx *context.Provider, router *mux.Router,
+	msgRegistrar *msghandler.Registrar, publicDID string) error {
 	store, tStore, err := initStores(params.datasourceParams, "", "_txn")
 	if err != nil {
 		return err
 	}
 
-	ctx, err := framework.Context()
-	if err != nil {
-		return fmt.Errorf("aries-framework - get aries context : %w", err)
-	}
-
 	o, err := operation.New(&operation.Config{
 		Aries:          ctx,
-		AriesMessenger: framework.Messenger(),
+		AriesMessenger: ctx.Messenger(),
 		MsgRegistrar:   msgRegistrar,
 		Storage: &operation.Storage{
 			Persistent: store,
 			Transient:  tStore,
 		},
+		PublicDID: publicDID,
 	})
 	if err != nil {
 		return fmt.Errorf("add operation handlers: %w", err)
 	}
 
-	kmsHandlers := kms.New(ctx).GetRESTHandlers()
+	kmsHandlers := kmsrest.New(ctx).GetRESTHandlers()
 
 	handlers := o.GetRESTHandlers()
 
@@ -552,8 +641,30 @@ func addHandlers(params *hubRouterParameters, framework *aries.Aries, router *mu
 	return nil
 }
 
-func createAriesAgent(parameters *hubRouterParameters, tlsConfig *tls.Config,
-	msgRegistrar api.MessageServiceProvider) (*aries.Aries, error) {
+var (
+	//nolint:gochecknoglobals // translation tables copied from afgo for consistency
+	keyTypes = map[string]kms.KeyType{
+		"ed25519":           kms.ED25519Type,
+		"ecdsap256ieee1363": kms.ECDSAP256TypeIEEEP1363,
+		"ecdsap256der":      kms.ECDSAP256TypeDER,
+		"ecdsap384ieee1363": kms.ECDSAP384TypeIEEEP1363,
+		"ecdsap384der":      kms.ECDSAP384TypeDER,
+		"ecdsap521ieee1363": kms.ECDSAP521TypeIEEEP1363,
+		"ecdsap521der":      kms.ECDSAP521TypeDER,
+	}
+
+	//nolint:gochecknoglobals // translation tables copied from afgo for consistency
+	keyAgreementTypes = map[string]kms.KeyType{
+		"x25519kw": kms.X25519ECDHKWType,
+		"p256kw":   kms.NISTP256ECDHKWType,
+		"p384kw":   kms.NISTP384ECDHKWType,
+		"p521kw":   kms.NISTP521ECDHKWType,
+	}
+)
+
+func createAriesAgent( // nolint:funlen // contains all aries initialization
+	parameters *hubRouterParameters, tlsConfig *tls.Config, msgRegistrar api.MessageServiceProvider,
+) (*aries.Aries, error) {
 	store, tStore, err := initStores(parameters.datasourceParams, "_aries", "_ariesps")
 	if err != nil {
 		return nil, fmt.Errorf("init storage: %w", err)
@@ -587,6 +698,16 @@ func createAriesAgent(parameters *hubRouterParameters, tlsConfig *tls.Config,
 		inboundWSTransportOpt,
 		aries.WithOutboundTransports(outboundHTTP, outboundWS),
 		aries.WithMessageServiceProvider(msgRegistrar),
+		aries.WithKeyType(kms.ECDSAP256TypeIEEEP1363),
+		aries.WithKeyAgreementType(kms.NISTP256ECDHKWType),
+	}
+
+	if kt, ok := keyTypes[parameters.didCommParameters.keyType]; ok {
+		opts = append(opts, aries.WithKeyType(kt))
+	}
+
+	if kat, ok := keyAgreementTypes[parameters.didCommParameters.keyAgreementType]; ok {
+		opts = append(opts, aries.WithKeyAgreementType(kat))
 	}
 
 	if parameters.didCommParameters.useDIDCommV2 {

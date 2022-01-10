@@ -25,7 +25,7 @@ import (
 	mockoutofbandv2 "github.com/trustbloc/hub-router/pkg/internal/mock/outofbandv2"
 )
 
-func getAriesCtx() Ctx {
+func ariesMockProvider() *mockprovider.Provider {
 	return &mockprovider.Provider{
 		ProtocolStateStorageProviderValue: mockstore.NewMockStoreProvider(),
 		StorageProviderValue:              mockstore.NewMockStoreProvider(),
@@ -40,4 +40,8 @@ func getAriesCtx() Ctx {
 		ServiceEndpointValue: "endpoint",
 		VDRegistryValue:      &mockvdr.MockVDRegistry{},
 	}
+}
+
+func getAriesCtx() Ctx {
+	return ariesMockProvider()
 }
