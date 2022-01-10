@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/packer/anoncrypt"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/packer/authcrypt"
 	legacyauthcrypt "github.com/hyperledger/aries-framework-go/pkg/didcomm/packer/legacy/authcrypt"
+	"github.com/hyperledger/aries-framework-go/pkg/didcomm/transport"
 	arieshttp "github.com/hyperledger/aries-framework-go/pkg/didcomm/transport/http"
 	ariesws "github.com/hyperledger/aries-framework-go/pkg/didcomm/transport/ws"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/jose"
@@ -712,6 +713,10 @@ func createAriesAgent( // nolint:funlen // contains all aries initialization
 
 	if parameters.didCommParameters.useDIDCommV2 {
 		opts = append(opts,
+			aries.WithMediaTypeProfiles([]string{
+				transport.MediaTypeDIDCommV2Profile,
+				transport.MediaTypeAIP2RFC0019Profile,
+			}),
 			aries.WithPacker(
 				func(provider packer.Provider) (packer.Packer, error) {
 					return authcrypt.New(provider, jose.A256CBCHS512)
