@@ -661,7 +661,7 @@ func addHandlers(params *hubRouterParameters, ctx *context.Provider, router *mux
 	return nil
 }
 
-func getResolverOpts(httpResolvers []string) ([]aries.Option, error) {
+func getResolverOpts(httpResolvers []string, tlsConfig *tls.Config) ([]aries.Option, error) {
 	var opts []aries.Option
 
 	const numPartsResolverOption = 2
@@ -674,7 +674,8 @@ func getResolverOpts(httpResolvers []string) ([]aries.Option, error) {
 			}
 
 			httpVDR, err := httpbinding.New(r[1],
-				httpbinding.WithAccept(func(method string) bool { return method == r[0] }))
+				httpbinding.WithAccept(func(method string) bool { return method == r[0] }),
+				httpbinding.WithHTTPClient(&http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}}))
 			if err != nil {
 				return nil, fmt.Errorf("failed to setup http resolver :  %w", err)
 			}
@@ -747,7 +748,7 @@ func createAriesAgent( // nolint:funlen // contains all aries initialization
 		aries.WithKeyAgreementType(kms.NISTP256ECDHKWType),
 	}
 
-	resolveOpts, err := getResolverOpts(parameters.didCommParameters.didResolvers)
+	resolveOpts, err := getResolverOpts(parameters.didCommParameters.didResolvers, tlsConfig)
 	if err != nil {
 		return nil, err
 	}
