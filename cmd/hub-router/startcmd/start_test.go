@@ -72,6 +72,7 @@ func TestGetStartCmd(t *testing.T) {
 			"--" + datasourceTransientFlagName, "mem://tests",
 			"--" + didcommV2FlagName, "false",
 			"--" + orbDomainsFlagName, orbDomain,
+			"--" + agentHTTPResolverFlagName, "orb@" + orbDomain,
 		}
 		startCmd.SetArgs(args)
 
@@ -384,6 +385,54 @@ func TestStartHubRouter(t *testing.T) {
 		err := startHubRouter(params, &mockServer{})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "creating public DID")
+	})
+
+	t.Run("fail: parsing resolver opts", func(t *testing.T) {
+		params := &hubRouterParameters{
+			hostURL:   "localhost:8080",
+			tlsParams: &tlsParameters{},
+			datasourceParams: &datasourceParams{
+				persistentURL: "mem://tests",
+				transientURL:  "mem://tests",
+			},
+			didCommParameters: &didCommParameters{
+				httpHostInternal: randomURL(t),
+				wsHostInternal:   randomURL(t),
+				useDIDCommV2:     false,
+				didResolvers:     []string{"error oops bad"},
+			},
+			orbClientParameters: &orbClientParameters{
+				domains: []string{"foo"},
+			},
+		}
+
+		err := startHubRouter(params, &mockServer{})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid http resolver options found")
+	})
+
+	t.Run("fail: creating http resolver", func(t *testing.T) {
+		params := &hubRouterParameters{
+			hostURL:   "localhost:8080",
+			tlsParams: &tlsParameters{},
+			datasourceParams: &datasourceParams{
+				persistentURL: "mem://tests",
+				transientURL:  "mem://tests",
+			},
+			didCommParameters: &didCommParameters{
+				httpHostInternal: randomURL(t),
+				wsHostInternal:   randomURL(t),
+				useDIDCommV2:     false,
+				didResolvers:     []string{"badResolver@not-a-url\x01^^"},
+			},
+			orbClientParameters: &orbClientParameters{
+				domains: []string{"foo"},
+			},
+		}
+
+		err := startHubRouter(params, &mockServer{})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to setup http resolver")
 	})
 }
 

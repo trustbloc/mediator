@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/defaults"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/context"
 	"github.com/hyperledger/aries-framework-go/pkg/kms"
+	"github.com/hyperledger/aries-framework-go/pkg/vdr/httpbinding"
 	"github.com/hyperledger/aries-framework-go/spi/storage"
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
@@ -134,6 +135,14 @@ const (
 	orbDomainsFlagUsage = "Comma-separated list of orb DID domains." +
 		" Alternatively, this can be set with the following environment variable: " + orbDomainsEnvKey
 	orbDomainsEnvKey = "HUB_ROUTER_ORB_DOMAINS"
+
+	// http resolver url flag.
+	agentHTTPResolverFlagName  = "http-resolver-url"
+	agentHTTPResolverEnvKey    = "HUB_ROUTER_HTTP_RESOLVER"
+	agentHTTPResolverFlagUsage = "HTTP binding DID resolver method and url. Values should be in `method@url` format." +
+		" This flag can be repeated, allowing multiple http resolvers. Defaults to peer DID resolver if not set." +
+		" Alternatively, this can be set with the following environment variable (in CSV format): " +
+		agentHTTPResolverEnvKey
 )
 
 // Storage config.
@@ -211,6 +220,7 @@ type didCommParameters struct {
 	useDIDCommV2     bool
 	keyType          string
 	keyAgreementType string
+	didResolvers     []string
 }
 
 type datasourceParams struct {
@@ -296,6 +306,9 @@ func createFlags(startCmd *cobra.Command) {
 
 	// orb client
 	startCmd.Flags().StringArrayP(orbDomainsFlagName, "", []string{}, orbDomainsFlagUsage)
+
+	// http DID resolver
+	startCmd.Flags().StringArrayP(agentHTTPResolverFlagName, "", []string{}, agentHTTPResolverFlagUsage)
 
 	startCmd.Flags().StringP(logLevelFlagName, "", "INFO", logLevelFlagUsage)
 }
@@ -426,7 +439,7 @@ func getDatasourceParams(cmd *cobra.Command) (*datasourceParams, error) {
 	return params, err
 }
 
-func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) {
+func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) { // nolint:funlen,gocyclo // ignore
 	httpHostInternal, err := cmdutils.GetUserSetVarFromString(cmd, didCommHTTPHostFlagName,
 		didCommHTTPHostEnvKey, false)
 	if err != nil {
@@ -461,6 +474,12 @@ func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) {
 		return nil, err
 	}
 
+	agentHTTPResolvers, err := cmdutils.GetUserSetVarFromArrayString(cmd, agentHTTPResolverFlagName,
+		agentHTTPResolverEnvKey, true)
+	if err != nil {
+		return nil, err
+	}
+
 	useDIDCommV2String, err := cmdutils.GetUserSetVarFromString(cmd, didcommV2FlagName, didcommV2EnvKey, true)
 	if err != nil {
 		return nil, err
@@ -483,6 +502,7 @@ func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) {
 		useDIDCommV2:     useDIDCommV2,
 		keyType:          keyType,
 		keyAgreementType: keyAgreementType,
+		didResolvers:     agentHTTPResolvers,
 	}, nil
 }
 
@@ -642,6 +662,31 @@ func addHandlers(params *hubRouterParameters, ctx *context.Provider, router *mux
 	return nil
 }
 
+func getResolverOpts(httpResolvers []string) ([]aries.Option, error) {
+	var opts []aries.Option
+
+	const numPartsResolverOption = 2
+
+	if len(httpResolvers) > 0 {
+		for _, httpResolver := range httpResolvers {
+			r := strings.Split(httpResolver, "@")
+			if len(r) != numPartsResolverOption {
+				return nil, fmt.Errorf("invalid http resolver options found")
+			}
+
+			httpVDR, err := httpbinding.New(r[1],
+				httpbinding.WithAccept(func(method string) bool { return method == r[0] }))
+			if err != nil {
+				return nil, fmt.Errorf("failed to setup http resolver :  %w", err)
+			}
+
+			opts = append(opts, aries.WithVDR(httpVDR))
+		}
+	}
+
+	return opts, nil
+}
+
 var (
 	//nolint:gochecknoglobals // translation tables copied from afgo for consistency
 	keyTypes = map[string]kms.KeyType{
@@ -701,6 +746,15 @@ func createAriesAgent( // nolint:funlen // contains all aries initialization
 		aries.WithMessageServiceProvider(msgRegistrar),
 		aries.WithKeyType(kms.ECDSAP256TypeIEEEP1363),
 		aries.WithKeyAgreementType(kms.NISTP256ECDHKWType),
+	}
+
+	resolveOpts, err := getResolverOpts(parameters.didCommParameters.didResolvers)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(resolveOpts) > 0 {
+		opts = append(opts, resolveOpts...)
 	}
 
 	if kt, ok := keyTypes[parameters.didCommParameters.keyType]; ok {
