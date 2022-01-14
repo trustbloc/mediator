@@ -580,9 +580,9 @@ func startHubRouter( // nolint:gocyclo // initialization apart from aries
 	publicDID := ""
 
 	if params.didCommParameters.useDIDCommV2 {
-		didCommEndpoint := params.didCommParameters.httpHostExternal
+		didCommEndpoint := params.didCommParameters.wsHostExternal
 		if didCommEndpoint == "" {
-			didCommEndpoint = params.didCommParameters.httpHostInternal
+			didCommEndpoint = params.didCommParameters.wsHostInternal
 		}
 
 		res, e := hubaries.GetPublicDID(ctx, &hubaries.PublicDIDConfig{
