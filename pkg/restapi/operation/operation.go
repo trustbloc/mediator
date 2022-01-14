@@ -195,7 +195,7 @@ func (o *Operation) generateInvitationV2(rw http.ResponseWriter, _ *http.Request
 
 	httputil.WriteResponseWithLog(rw, &DIDCommInvitationV2Resp{
 		Invitation: invitation,
-	}, invitationPath, logger)
+	}, invitationV2Path, logger)
 }
 
 func (o *Operation) didCommActionListener(ch <-chan service.DIDCommAction) {
