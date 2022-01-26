@@ -70,7 +70,7 @@ func TestGetStartCmd(t *testing.T) {
 			"--" + didCommWSHostFlagName, randomURL(t),
 			"--" + datasourcePersistentFlagName, "mem://tests",
 			"--" + datasourceTransientFlagName, "mem://tests",
-			"--" + didcommV2FlagName, "false",
+			"--" + didcommV1FlagName, "true",
 			"--" + orbDomainsFlagName, orbDomain,
 			"--" + agentHTTPResolverFlagName, "orb@" + orbDomain,
 		}
@@ -258,7 +258,7 @@ func TestGetStartCmd(t *testing.T) {
 		require.Contains(t, err.Error(), "unsupported storage driver: invaldidb")
 	})
 
-	t.Run("invalid use-didcomm-v2 bool", func(t *testing.T) {
+	t.Run("invalid use-didcomm-v1 bool", func(t *testing.T) {
 		startCmd := GetStartCmd(&mockServer{})
 
 		args := []string{
@@ -267,13 +267,13 @@ func TestGetStartCmd(t *testing.T) {
 			"--" + didCommWSHostFlagName, randomURL(t),
 			"--" + datasourcePersistentFlagName, "mem://tests",
 			"--" + datasourceTransientFlagName, "mem://tests",
-			"--" + didcommV2FlagName, "AAAAH-BAD-DATA",
+			"--" + didcommV1FlagName, "AAAAH-BAD-DATA",
 		}
 		startCmd.SetArgs(args)
 
 		err := startCmd.Execute()
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "parsing use-didcomm-v2 flag")
+		require.Contains(t, err.Error(), "parsing use-didcomm-v1 flag")
 	})
 
 	t.Run("missing orb domain", func(t *testing.T) {
@@ -309,7 +309,9 @@ func TestStartHubRouter(t *testing.T) {
 			didCommParameters: &didCommParameters{
 				httpHostInternal: randomURL(t),
 				wsHostInternal:   randomURL(t),
-				useDIDCommV2:     false,
+				useDIDCommV1:     true,
+				keyType:          "ed25519",
+				keyAgreementType: "x25519kw",
 			},
 			orbClientParameters: &orbClientParameters{
 				domains: []string{orbDomain},
@@ -377,7 +379,7 @@ func TestStartHubRouter(t *testing.T) {
 			didCommParameters: &didCommParameters{
 				httpHostInternal: randomURL(t),
 				wsHostInternal:   randomURL(t),
-				useDIDCommV2:     true,
+				useDIDCommV1:     false,
 			},
 			orbClientParameters: &orbClientParameters{},
 		}
@@ -398,7 +400,7 @@ func TestStartHubRouter(t *testing.T) {
 			didCommParameters: &didCommParameters{
 				httpHostInternal: randomURL(t),
 				wsHostInternal:   randomURL(t),
-				useDIDCommV2:     false,
+				useDIDCommV1:     true,
 				didResolvers:     []string{"error oops bad"},
 			},
 			orbClientParameters: &orbClientParameters{
@@ -422,7 +424,7 @@ func TestStartHubRouter(t *testing.T) {
 			didCommParameters: &didCommParameters{
 				httpHostInternal: randomURL(t),
 				wsHostInternal:   randomURL(t),
-				useDIDCommV2:     false,
+				useDIDCommV1:     true,
 				didResolvers:     []string{"badResolver@not-a-url\x01^^"},
 			},
 			orbClientParameters: &orbClientParameters{
