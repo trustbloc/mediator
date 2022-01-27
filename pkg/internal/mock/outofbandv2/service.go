@@ -18,7 +18,7 @@ type MockService struct {
 }
 
 // AcceptInvitation accepts invitation.
-func (m *MockService) AcceptInvitation(*outofbandv2.Invitation) (string, error) {
+func (m *MockService) AcceptInvitation(*outofbandv2.Invitation, ...outofbandv2.AcceptOption) (string, error) {
 	return m.AcceptInvitationValue, m.AcceptInvitationErr
 }
 
