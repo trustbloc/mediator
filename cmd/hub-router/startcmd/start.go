@@ -107,10 +107,10 @@ const (
 
 // DIDComm config.
 const (
-	didcommV2FlagName  = "use-didcomm-v2"
-	didcommV2FlagUsage = "Use DIDComm V2. Possible values [true] [false]. Defaults to false if not set." +
-		" Alternatively, this can be set with the following environment variable: " + didcommV2EnvKey
-	didcommV2EnvKey = "HUB_ROUTER_DIDCOMM_V2"
+	didcommV1FlagName  = "use-didcomm-v1"
+	didcommV1FlagUsage = "Use DIDComm V1. Possible values [true] [false]. Defaults to false if not set." +
+		" Alternatively, this can be set with the following environment variable: " + didcommV1EnvKey
+	didcommV1EnvKey = "HUB_ROUTER_DIDCOMM_V1"
 
 	// default verification key type flag.
 	keyTypeFlagName = "key-type"
@@ -217,7 +217,7 @@ type didCommParameters struct {
 	httpHostExternal string
 	wsHostInternal   string
 	wsHostExternal   string
-	useDIDCommV2     bool
+	useDIDCommV1     bool
 	keyType          string
 	keyAgreementType string
 	didResolvers     []string
@@ -300,7 +300,7 @@ func createFlags(startCmd *cobra.Command) {
 	startCmd.Flags().StringP(didCommHTTPHostExternalFlagName, "", "", didCommHTTPHostExternalFlagUsage)
 	startCmd.Flags().StringP(didCommWSHostFlagName, "", "", didCommWSHostFlagUsage)
 	startCmd.Flags().StringP(didCommWSHostExternalFlagName, "", "", didCommWSHostExternalFlagUsage)
-	startCmd.Flags().StringP(didcommV2FlagName, "", "", didcommV2FlagUsage)
+	startCmd.Flags().StringP(didcommV1FlagName, "", "", didcommV1FlagUsage)
 	startCmd.Flags().StringP(keyTypeFlagName, "", "", keyTypeUsage)
 	startCmd.Flags().StringP(keyAgreementTypeFlagName, "", "", keyAgreementTypeUsage)
 
@@ -480,17 +480,17 @@ func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) { // nolin
 		return nil, err
 	}
 
-	useDIDCommV2String, err := cmdutils.GetUserSetVarFromString(cmd, didcommV2FlagName, didcommV2EnvKey, true)
+	useDIDCommV1String, err := cmdutils.GetUserSetVarFromString(cmd, didcommV1FlagName, didcommV1EnvKey, true)
 	if err != nil {
 		return nil, err
 	}
 
-	var useDIDCommV2 bool
+	var useDIDCommV1 bool
 
-	if useDIDCommV2String != "" {
-		useDIDCommV2, err = strconv.ParseBool(useDIDCommV2String)
+	if useDIDCommV1String != "" {
+		useDIDCommV1, err = strconv.ParseBool(useDIDCommV1String)
 		if err != nil {
-			return nil, fmt.Errorf("parsing use-didcomm-v2 flag: %w", err)
+			return nil, fmt.Errorf("parsing use-didcomm-v1 flag: %w", err)
 		}
 	}
 
@@ -499,7 +499,7 @@ func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) { // nolin
 		httpHostExternal: httpHostExternal,
 		wsHostInternal:   wsHostInternal,
 		wsHostExternal:   wsHostExternal,
-		useDIDCommV2:     useDIDCommV2,
+		useDIDCommV1:     useDIDCommV1,
 		keyType:          keyType,
 		keyAgreementType: keyAgreementType,
 		didResolvers:     agentHTTPResolvers,
@@ -579,7 +579,7 @@ func startHubRouter( // nolint:gocyclo // initialization apart from aries
 
 	publicDID := ""
 
-	if params.didCommParameters.useDIDCommV2 {
+	if !params.didCommParameters.useDIDCommV1 {
 		didCommEndpoint := params.didCommParameters.wsHostExternal
 		if didCommEndpoint == "" {
 			didCommEndpoint = params.didCommParameters.wsHostInternal
@@ -760,13 +760,17 @@ func createAriesAgent( // nolint:funlen // contains all aries initialization
 
 	if kt, ok := keyTypes[parameters.didCommParameters.keyType]; ok {
 		opts = append(opts, aries.WithKeyType(kt))
+	} else {
+		opts = append(opts, aries.WithKeyType(kms.ECDSAP256TypeIEEEP1363))
 	}
 
 	if kat, ok := keyAgreementTypes[parameters.didCommParameters.keyAgreementType]; ok {
 		opts = append(opts, aries.WithKeyAgreementType(kat))
+	} else {
+		opts = append(opts, aries.WithKeyAgreementType(kms.NISTP256ECDHKWType))
 	}
 
-	if parameters.didCommParameters.useDIDCommV2 {
+	if !parameters.didCommParameters.useDIDCommV1 {
 		opts = append(opts,
 			aries.WithMediaTypeProfiles([]string{
 				transport.MediaTypeDIDCommV2Profile,
