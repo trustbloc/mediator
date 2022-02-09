@@ -729,6 +729,7 @@ func createAriesAgent( // nolint:funlen // contains all aries initialization
 		parameters.didCommParameters.wsHostExternal,
 		parameters.tlsParams.serveCertPath,
 		parameters.tlsParams.serveKeyPath,
+		0,
 	)
 
 	outboundHTTP, err := arieshttp.NewOutbound(arieshttp.WithOutboundTLSConfig(tlsConfig))
