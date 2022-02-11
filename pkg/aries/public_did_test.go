@@ -52,7 +52,7 @@ func TestNewPublicDIDGetter(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		ctx := getAriesCtx()
 
-		_, err := newPublicDIDGetter(ctx, nil, nil)
+		_, err := newPublicDIDGetter(ctx, nil, nil, "t1")
 		require.NoError(t, err)
 	})
 
@@ -62,7 +62,7 @@ func TestNewPublicDIDGetter(t *testing.T) {
 		ctx := ariesMockProvider()
 		ctx.StorageProviderValue = &mockstore.MockStoreProvider{ErrOpenStoreHandle: expectErr}
 
-		_, err := newPublicDIDGetter(ctx, nil, nil)
+		_, err := newPublicDIDGetter(ctx, nil, nil, "t1")
 		require.Error(t, err)
 		require.ErrorIs(t, err, expectErr)
 	})
@@ -79,7 +79,7 @@ func TestPublicDIDGetter_Initialize(t *testing.T) {
 		ctx := ariesMockProvider()
 		ctx.StorageProviderValue = mockstore.NewCustomMockStoreProvider(&store)
 
-		pdg, err := newPublicDIDGetter(ctx, nil, nil)
+		pdg, err := newPublicDIDGetter(ctx, nil, nil, "t1")
 		require.NoError(t, err)
 
 		_, err = pdg.Initialize("")
@@ -93,7 +93,7 @@ func TestPublicDIDGetter_Initialize(t *testing.T) {
 		ctx.KeyTypeValue = "oopsie-woopsie-not-a-key-type"
 		ctx.KeyAgreementTypeValue = kms.NISTP256ECDHKWType
 
-		pdg, err := newPublicDIDGetter(ctx, nil, nil)
+		pdg, err := newPublicDIDGetter(ctx, nil, nil, "t1")
 		require.NoError(t, err)
 
 		_, err = pdg.Initialize("")
@@ -108,7 +108,7 @@ func TestPublicDIDGetter_Initialize(t *testing.T) {
 		ctx.KeyTypeValue = kms.ECDSAP256IEEEP1363
 		ctx.KeyAgreementTypeValue = "oopsie-woopsie-not-a-key-type"
 
-		pdg, err := newPublicDIDGetter(ctx, nil, nil)
+		pdg, err := newPublicDIDGetter(ctx, nil, nil, "t1")
 		require.NoError(t, err)
 
 		_, err = pdg.Initialize("")
@@ -124,7 +124,7 @@ func TestPublicDIDGetter_Initialize(t *testing.T) {
 		ctx.KeyTypeValue = kms.ECDSAP256IEEEP1363
 		ctx.KeyAgreementTypeValue = kms.NISTP256ECDHKWType
 
-		pdg, err := newPublicDIDGetter(ctx, nil, nil)
+		pdg, err := newPublicDIDGetter(ctx, nil, nil, "t1")
 		require.NoError(t, err)
 
 		_, err = pdg.Initialize("")
@@ -143,7 +143,7 @@ func TestPublicDIDGetter_Initialize(t *testing.T) {
 		ctx.KeyTypeValue = kms.ECDSAP256IEEEP1363
 		ctx.KeyAgreementTypeValue = kms.NISTP256ECDHKWType
 
-		pdg, err := newPublicDIDGetter(ctx, nil, nil)
+		pdg, err := newPublicDIDGetter(ctx, nil, nil, "t1")
 		require.NoError(t, err)
 
 		pdg.orbVDR = &mockVDR{createFunc: func(didDoc *did.Doc, opts ...vdrapi.DIDMethodOption) (*did.DocResolution, error) {
@@ -166,7 +166,7 @@ func TestPublicDIDGetter_Initialize(t *testing.T) {
 		ctx.KeyTypeValue = kms.ECDSAP256IEEEP1363
 		ctx.KeyAgreementTypeValue = kms.NISTP256ECDHKWType
 
-		pdg, err := newPublicDIDGetter(ctx, nil, nil)
+		pdg, err := newPublicDIDGetter(ctx, nil, nil, "t1")
 		require.NoError(t, err)
 
 		testDID := "did:orb:test"
@@ -189,7 +189,7 @@ func TestPublicDIDGetter_createVerification(t *testing.T) {
 
 		ctx.KMSValue = &mockkms.KeyManager{CrAndExportPubKeyValue: []byte("foo bar baz")}
 
-		pdg, err := newPublicDIDGetter(ctx, nil, nil)
+		pdg, err := newPublicDIDGetter(ctx, nil, nil, "t1")
 		require.NoError(t, err)
 
 		_, err = pdg.createVerification("foo", "foo", 0)

@@ -136,6 +136,11 @@ const (
 		" Alternatively, this can be set with the following environment variable: " + orbDomainsEnvKey
 	orbDomainsEnvKey = "HUB_ROUTER_ORB_DOMAINS"
 
+	requestTokensFlagName  = "request-tokens"
+	requestTokensEnvKey    = "HUB_ROUTER_REQUEST_TOKENS" // nolint: gosec,gocritic
+	requestTokensFlagUsage = "Tokens used for http request " +
+		" Alternatively, this can be set with the following environment variable: " + requestTokensEnvKey
+
 	// http resolver url flag.
 	agentHTTPResolverFlagName  = "http-resolver-url"
 	agentHTTPResolverEnvKey    = "HUB_ROUTER_HTTP_RESOLVER"
@@ -183,7 +188,9 @@ const (
 )
 
 const (
-	sleep = 1 * time.Second
+	sleep       = 1 * time.Second
+	tokenLength = 2
+	confErrMsg  = "configuration failed: %w"
 )
 
 // Database types.
@@ -235,6 +242,7 @@ type hubRouterParameters struct {
 	datasourceParams    *datasourceParams
 	didCommParameters   *didCommParameters
 	orbClientParameters *orbClientParameters
+	requestTokens       map[string]string
 }
 
 type orbClientParameters struct {
@@ -306,6 +314,7 @@ func createFlags(startCmd *cobra.Command) {
 
 	// orb client
 	startCmd.Flags().StringArrayP(orbDomainsFlagName, "", []string{}, orbDomainsFlagUsage)
+	startCmd.Flags().StringArrayP(requestTokensFlagName, "", []string{}, requestTokensFlagUsage)
 
 	// http DID resolver
 	startCmd.Flags().StringArrayP(agentHTTPResolverFlagName, "", []string{}, agentHTTPResolverFlagUsage)
@@ -340,6 +349,11 @@ func getHubRouterParameters(cmd *cobra.Command) (*hubRouterParameters, error) {
 		return nil, err
 	}
 
+	requestTokens, err := getRequestTokens(cmd)
+	if err != nil {
+		return nil, fmt.Errorf(confErrMsg, err)
+	}
+
 	logLevel, err := cmdutils.GetUserSetVarFromString(cmd, logLevelFlagName, logLevelEnvKey, true)
 	if err != nil {
 		return nil, err
@@ -362,6 +376,7 @@ func getHubRouterParameters(cmd *cobra.Command) (*hubRouterParameters, error) {
 		datasourceParams:    dsParams,
 		didCommParameters:   didCommParameters,
 		orbClientParameters: orbParams,
+		requestTokens:       requestTokens,
 	}, nil
 }
 
@@ -401,6 +416,28 @@ func getTLS(cmd *cobra.Command) (*tlsParameters, error) {
 		serveCertPath:  tlsServeCertPath,
 		serveKeyPath:   tlsServeKeyPath,
 	}, nil
+}
+
+func getRequestTokens(cmd *cobra.Command) (map[string]string, error) {
+	requestTokens, err := cmdutils.GetUserSetVarFromArrayString(cmd, requestTokensFlagName,
+		requestTokensEnvKey, true)
+	if err != nil {
+		return nil, fmt.Errorf(confErrMsg, err)
+	}
+
+	tokens := make(map[string]string)
+
+	for _, token := range requestTokens {
+		split := strings.Split(token, "=")
+		switch len(split) {
+		case tokenLength:
+			tokens[split[0]] = split[1]
+		default:
+			logger.Warnf("invalid token '%s'", token)
+		}
+	}
+
+	return tokens, nil
 }
 
 func getDatasourceParams(cmd *cobra.Command) (*datasourceParams, error) {
@@ -588,6 +625,7 @@ func startHubRouter( // nolint:gocyclo // initialization apart from aries
 		res, e := hubaries.GetPublicDID(ctx, &hubaries.PublicDIDConfig{
 			TLSConfig:       tlsConfig,
 			OrbDomains:      params.orbClientParameters.domains,
+			Token:           params.requestTokens["sidetreeToken"],
 			DIDCommEndPoint: didCommEndpoint,
 		})
 		if e != nil {
