@@ -44,11 +44,12 @@ type PublicDIDConfig struct {
 	TLSConfig       *tls.Config
 	OrbDomains      []string
 	DIDCommEndPoint string
+	Token           string
 }
 
 // GetPublicDID gets the public DID that this router will use for OOBv2 invitations.
 func GetPublicDID(ctx Ctx, cfg *PublicDIDConfig) (string, error) {
-	pdg, err := newPublicDIDGetter(ctx, cfg.TLSConfig, cfg.OrbDomains)
+	pdg, err := newPublicDIDGetter(ctx, cfg.TLSConfig, cfg.OrbDomains, cfg.Token)
 	if err != nil {
 		return "", err
 	}
@@ -57,7 +58,7 @@ func GetPublicDID(ctx Ctx, cfg *PublicDIDConfig) (string, error) {
 }
 
 // newPublicDIDGetter returns a new PublicDIDGetter.
-func newPublicDIDGetter(ctx Ctx, tlsConfig *tls.Config, orbDomains []string) (*PublicDIDGetter, error) {
+func newPublicDIDGetter(ctx Ctx, tlsConfig *tls.Config, orbDomains []string, token string) (*PublicDIDGetter, error) {
 	store, err := ctx.StorageProvider().OpenStore(storeName)
 	if err != nil {
 		return nil, fmt.Errorf("open invitation DID store: %w", err)
@@ -71,6 +72,10 @@ func newPublicDIDGetter(ctx Ctx, tlsConfig *tls.Config, orbDomains []string) (*P
 
 	for _, domain := range orbDomains {
 		orbOpts = append(orbOpts, orb.WithDomain(domain))
+	}
+
+	if token != "" {
+		orbOpts = append(orbOpts, orb.WithAuthToken(token))
 	}
 
 	vdr, err := orb.New(nil, orbOpts...)
