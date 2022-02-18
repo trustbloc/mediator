@@ -495,7 +495,7 @@ func TestDIDCommMsgListener(t *testing.T) {
 	})
 }
 
-func TestCreateConnectionReqHanlder(t *testing.T) {
+func TestCreateConnectionReqHandler(t *testing.T) {
 	t.Run("no did doc", func(t *testing.T) {
 		c, err := New(config())
 		require.NoError(t, err)
@@ -526,7 +526,55 @@ func TestCreateConnectionReqHanlder(t *testing.T) {
 		require.Contains(t, err.Error(), "parse did doc")
 	})
 
-	t.Run("invalid did doc", func(t *testing.T) {
+	t.Run("fail: create auth VM", func(t *testing.T) {
+		ctx := getMockProvider()
+
+		ctx.KeyTypeValue = "invalid key type"
+
+		c, err := New(config(ctx))
+		require.NoError(t, err)
+
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t).JSONBytes()
+		require.NoError(t, err)
+
+		msg := service.NewDIDCommMsgMap(CreateConnReq{
+			ID:   uuid.New().String(),
+			Type: createConnReq,
+			Data: &CreateConnReqData{
+				DIDDoc: json.RawMessage(didDocBytes),
+			},
+		})
+
+		_, err = c.handleCreateConnReq(msg)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "creating authentication VM")
+	})
+
+	t.Run("fail: create keyAgr VM", func(t *testing.T) {
+		ctx := getMockProvider()
+
+		ctx.KeyAgreementTypeValue = "invalid key type"
+
+		c, err := New(config(ctx))
+		require.NoError(t, err)
+
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t).JSONBytes()
+		require.NoError(t, err)
+
+		msg := service.NewDIDCommMsgMap(CreateConnReq{
+			ID:   uuid.New().String(),
+			Type: createConnReq,
+			Data: &CreateConnReqData{
+				DIDDoc: json.RawMessage(didDocBytes),
+			},
+		})
+
+		_, err = c.handleCreateConnReq(msg)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "creating keyagreement VM")
+	})
+
+	t.Run("fail: create did doc", func(t *testing.T) {
 		c, err := New(config())
 		require.NoError(t, err)
 

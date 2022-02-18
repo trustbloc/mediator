@@ -10,12 +10,16 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/hyperledger/aries-framework-go-ext/component/vdr/orb"
+	"github.com/hyperledger/aries-framework-go/pkg/crypto"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
+	"github.com/hyperledger/aries-framework-go/pkg/doc/jose/jwk"
+	"github.com/hyperledger/aries-framework-go/pkg/doc/jose/jwk/jwksupport"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/util/jwkkid"
 	vdrapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
 	"github.com/hyperledger/aries-framework-go/pkg/kms"
@@ -169,16 +173,65 @@ func (g *PublicDIDGetter) createVerification(id string, kt kms.KeyType, relation
 		return nil, fmt.Errorf("creating public key: %w", err)
 	}
 
-	j, err := jwkkid.BuildJWK(pkBytes, kt)
-	if err != nil {
-		return nil, fmt.Errorf("creating jwk: %w", err)
-	}
+	var j *jwk.JWK
 
-	j.KeyID = kid
+	switch kt { // nolint:exhaustive // most cases can use the default.
+	case kms.ED25519Type:
+		j, err = jwksupport.PubKeyBytesToJWK(pkBytes, kms.ED25519Type)
+		if err != nil {
+			return nil, fmt.Errorf("creating jwk from Ed25519 key: %w", err)
+		}
+	default:
+		j, err = jwkkid.BuildJWK(pkBytes, kt)
+		if err != nil {
+			return nil, fmt.Errorf("creating jwk: %w", err)
+		}
+
+		j.KeyID = kid
+	}
 
 	vm, err := did.NewVerificationMethodFromJWK(id, "JsonWebKey2020", "", j)
 	if err != nil {
 		return nil, fmt.Errorf("creating verification method: %w", err)
+	}
+
+	return did.NewReferencedVerification(vm, relationship), nil
+}
+
+// CreateVerification creates a did.Verification with a referenced did.VerificationMethod, with a new key of type kt.
+func CreateVerification(keyManager kms.KeyManager, id string, kt kms.KeyType, relationship did.VerificationRelationship,
+) (*did.Verification, error) {
+	kid, pkBytes, err := keyManager.CreateAndExportPubKeyBytes(kt)
+	if err != nil {
+		return nil, fmt.Errorf("creating public key: %w", err)
+	}
+
+	var vm *did.VerificationMethod
+
+	switch kt { // nolint:exhaustive // most cases can use the default.
+	case kms.ED25519Type:
+		vm = did.NewVerificationMethodFromBytes(id, "Ed25519VerificationKey2018", "", pkBytes)
+	case kms.X25519ECDHKWType:
+		key := &crypto.PublicKey{}
+
+		err = json.Unmarshal(pkBytes, key)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal X25519 key: %w", err)
+		}
+
+		vm = did.NewVerificationMethodFromBytes(id, "X25519KeyAgreementKey2019", "", key.X)
+	default:
+		j, err := jwkkid.BuildJWK(pkBytes, kt)
+		if err != nil {
+			return nil, fmt.Errorf("creating jwk: %w", err)
+		}
+
+		j.KeyID = kid
+
+		vm, err = did.NewVerificationMethodFromJWK(id, "JsonWebKey2020", "", j)
+		if err != nil {
+			return nil, fmt.Errorf("creating verification method: %w", err)
+		}
 	}
 
 	return did.NewReferencedVerification(vm, relationship), nil

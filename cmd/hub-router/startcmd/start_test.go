@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
@@ -42,7 +43,68 @@ type closeFunc func()
 func dummySidetree(t *testing.T) (string, closeFunc) {
 	t.Helper()
 
+	props := map[string]interface{}{"https://trustbloc.dev/ns/min-resolvers": 1}
+
+	propBytes, err := json.Marshal(props)
+	require.NoError(t, err)
+
+	resolutionID := "identifiers"
+	resolutionEndpoint := "/sidetree/v1/" + resolutionID
+	operationID := "operations"
+	operationEndpoint := "/sidetree/v1/" + operationID
+
+	var srvURL string
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		p := req.URL.Path
+		if strings.Contains(p, "/.well-known/did-orb") {
+			result := fmt.Sprintf(`{
+	"resolutionEndpoint":"%s",
+	"operationEndpoint":"%s"
+}`, srvURL+resolutionEndpoint, srvURL+operationEndpoint)
+
+			w.Write([]byte(result)) // nolint:errcheck,gosec // test helper.
+
+			return
+		}
+
+		if strings.Contains(p, "/webfinger") {
+			q := req.URL.Query()["resource"]
+
+			if len(q) == 0 {
+				w.WriteHeader(500)
+
+				return
+			}
+
+			resource := q[0]
+
+			if strings.Contains(resource, resolutionID) {
+				result := fmt.Sprintf(`{
+	"subject":"%s",
+	"properties":%s,
+	"links":[{
+		"rel": "self",
+		"href": "%s"
+	}]
+}`, resource, string(propBytes), resource)
+
+				w.Write([]byte(result)) // nolint:errcheck,gosec // test helper.
+			} else if strings.Contains(resource, operationID) {
+				result := fmt.Sprintf(`{
+	"subject":"%s",
+	"links":[{
+		"rel": "self",
+		"href": "%s"
+	}]
+}`, resource, resource)
+
+				w.Write([]byte(result)) // nolint:errcheck,gosec // test helper.
+			}
+
+			return
+		}
+
 		b, err := json.Marshal(did.DocResolution{
 			DIDDocument: &did.Doc{ID: "did:orb:test", Context: []string{did.ContextV1}},
 		})
@@ -51,6 +113,8 @@ func dummySidetree(t *testing.T) (string, closeFunc) {
 		_, err = w.Write(b)
 		require.NoError(t, err)
 	}))
+
+	srvURL = srv.URL
 
 	return srv.URL, func() {
 		srv.Close()
@@ -70,7 +134,6 @@ func TestGetStartCmd(t *testing.T) {
 			"--" + didCommWSHostFlagName, randomURL(t),
 			"--" + datasourcePersistentFlagName, "mem://tests",
 			"--" + datasourceTransientFlagName, "mem://tests",
-			"--" + didcommV1FlagName, "true",
 			"--" + orbDomainsFlagName, orbDomain,
 			"--" + agentHTTPResolverFlagName, "orb@" + orbDomain,
 		}
@@ -258,24 +321,6 @@ func TestGetStartCmd(t *testing.T) {
 		require.Contains(t, err.Error(), "unsupported storage driver: invaldidb")
 	})
 
-	t.Run("invalid use-didcomm-v1 bool", func(t *testing.T) {
-		startCmd := GetStartCmd(&mockServer{})
-
-		args := []string{
-			"--" + hostURLFlagName, "localhost:8080",
-			"--" + didCommHTTPHostFlagName, randomURL(t),
-			"--" + didCommWSHostFlagName, randomURL(t),
-			"--" + datasourcePersistentFlagName, "mem://tests",
-			"--" + datasourceTransientFlagName, "mem://tests",
-			"--" + didcommV1FlagName, "AAAAH-BAD-DATA",
-		}
-		startCmd.SetArgs(args)
-
-		err := startCmd.Execute()
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "parsing use-didcomm-v1 flag")
-	})
-
 	t.Run("missing orb domain", func(t *testing.T) {
 		startCmd := GetStartCmd(&mockServer{})
 
@@ -309,7 +354,6 @@ func TestStartHubRouter(t *testing.T) {
 			didCommParameters: &didCommParameters{
 				httpHostInternal: randomURL(t),
 				wsHostInternal:   randomURL(t),
-				useDIDCommV1:     true,
 				keyType:          "ed25519",
 				keyAgreementType: "x25519kw",
 			},
@@ -379,7 +423,6 @@ func TestStartHubRouter(t *testing.T) {
 			didCommParameters: &didCommParameters{
 				httpHostInternal: randomURL(t),
 				wsHostInternal:   randomURL(t),
-				useDIDCommV1:     false,
 			},
 			orbClientParameters: &orbClientParameters{},
 		}
@@ -400,7 +443,6 @@ func TestStartHubRouter(t *testing.T) {
 			didCommParameters: &didCommParameters{
 				httpHostInternal: randomURL(t),
 				wsHostInternal:   randomURL(t),
-				useDIDCommV1:     true,
 				didResolvers:     []string{"error oops bad"},
 			},
 			orbClientParameters: &orbClientParameters{
@@ -424,7 +466,6 @@ func TestStartHubRouter(t *testing.T) {
 			didCommParameters: &didCommParameters{
 				httpHostInternal: randomURL(t),
 				wsHostInternal:   randomURL(t),
-				useDIDCommV1:     true,
 				didResolvers:     []string{"badResolver@not-a-url\x01^^"},
 			},
 			orbClientParameters: &orbClientParameters{
