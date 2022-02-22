@@ -22,14 +22,9 @@ import (
 	arieslog "github.com/hyperledger/aries-framework-go/pkg/common/log"
 	kmsrest "github.com/hyperledger/aries-framework-go/pkg/controller/rest/kms"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/messaging/msghandler"
-	"github.com/hyperledger/aries-framework-go/pkg/didcomm/packer"
-	"github.com/hyperledger/aries-framework-go/pkg/didcomm/packer/anoncrypt"
-	"github.com/hyperledger/aries-framework-go/pkg/didcomm/packer/authcrypt"
-	legacyauthcrypt "github.com/hyperledger/aries-framework-go/pkg/didcomm/packer/legacy/authcrypt"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/transport"
 	arieshttp "github.com/hyperledger/aries-framework-go/pkg/didcomm/transport/http"
 	ariesws "github.com/hyperledger/aries-framework-go/pkg/didcomm/transport/ws"
-	"github.com/hyperledger/aries-framework-go/pkg/doc/jose"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api"
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/defaults"
@@ -107,11 +102,6 @@ const (
 
 // DIDComm config.
 const (
-	didcommV1FlagName  = "use-didcomm-v1"
-	didcommV1FlagUsage = "Use DIDComm V1. Possible values [true] [false]. Defaults to false if not set." +
-		" Alternatively, this can be set with the following environment variable: " + didcommV1EnvKey
-	didcommV1EnvKey = "HUB_ROUTER_DIDCOMM_V1"
-
 	// default verification key type flag.
 	keyTypeFlagName = "key-type"
 	keyTypeEnvKey   = "HUB_ROUTER_KEY_TYPE"
@@ -224,7 +214,6 @@ type didCommParameters struct {
 	httpHostExternal string
 	wsHostInternal   string
 	wsHostExternal   string
-	useDIDCommV1     bool
 	keyType          string
 	keyAgreementType string
 	didResolvers     []string
@@ -308,7 +297,6 @@ func createFlags(startCmd *cobra.Command) {
 	startCmd.Flags().StringP(didCommHTTPHostExternalFlagName, "", "", didCommHTTPHostExternalFlagUsage)
 	startCmd.Flags().StringP(didCommWSHostFlagName, "", "", didCommWSHostFlagUsage)
 	startCmd.Flags().StringP(didCommWSHostExternalFlagName, "", "", didCommWSHostExternalFlagUsage)
-	startCmd.Flags().StringP(didcommV1FlagName, "", "", didcommV1FlagUsage)
 	startCmd.Flags().StringP(keyTypeFlagName, "", "", keyTypeUsage)
 	startCmd.Flags().StringP(keyAgreementTypeFlagName, "", "", keyAgreementTypeUsage)
 
@@ -476,7 +464,7 @@ func getDatasourceParams(cmd *cobra.Command) (*datasourceParams, error) {
 	return params, err
 }
 
-func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) { // nolint:funlen,gocyclo // ignore
+func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) {
 	httpHostInternal, err := cmdutils.GetUserSetVarFromString(cmd, didCommHTTPHostFlagName,
 		didCommHTTPHostEnvKey, false)
 	if err != nil {
@@ -517,26 +505,11 @@ func getDIDCommParams(cmd *cobra.Command) (*didCommParameters, error) { // nolin
 		return nil, err
 	}
 
-	useDIDCommV1String, err := cmdutils.GetUserSetVarFromString(cmd, didcommV1FlagName, didcommV1EnvKey, true)
-	if err != nil {
-		return nil, err
-	}
-
-	var useDIDCommV1 bool
-
-	if useDIDCommV1String != "" {
-		useDIDCommV1, err = strconv.ParseBool(useDIDCommV1String)
-		if err != nil {
-			return nil, fmt.Errorf("parsing use-didcomm-v1 flag: %w", err)
-		}
-	}
-
 	return &didCommParameters{
 		httpHostInternal: httpHostInternal,
 		httpHostExternal: httpHostExternal,
 		wsHostInternal:   wsHostInternal,
 		wsHostExternal:   wsHostExternal,
-		useDIDCommV1:     useDIDCommV1,
 		keyType:          keyType,
 		keyAgreementType: keyAgreementType,
 		didResolvers:     agentHTTPResolvers,
@@ -614,25 +587,19 @@ func startHubRouter( // nolint:gocyclo // initialization apart from aries
 		return fmt.Errorf("aries-framework - get aries context : %w", err)
 	}
 
-	publicDID := ""
+	didCommEndpoint := params.didCommParameters.wsHostExternal
+	if didCommEndpoint == "" {
+		didCommEndpoint = params.didCommParameters.wsHostInternal
+	}
 
-	if !params.didCommParameters.useDIDCommV1 {
-		didCommEndpoint := params.didCommParameters.wsHostExternal
-		if didCommEndpoint == "" {
-			didCommEndpoint = params.didCommParameters.wsHostInternal
-		}
-
-		res, e := hubaries.GetPublicDID(ctx, &hubaries.PublicDIDConfig{
-			TLSConfig:       tlsConfig,
-			OrbDomains:      params.orbClientParameters.domains,
-			Token:           params.requestTokens["sidetreeToken"],
-			DIDCommEndPoint: didCommEndpoint,
-		})
-		if e != nil {
-			return fmt.Errorf("creating public DID: %w", e)
-		}
-
-		publicDID = res
+	publicDID, e := hubaries.GetPublicDID(ctx, &hubaries.PublicDIDConfig{
+		TLSConfig:       tlsConfig,
+		OrbDomains:      params.orbClientParameters.domains,
+		Token:           params.requestTokens["sidetreeToken"],
+		DIDCommEndPoint: didCommEndpoint,
+	})
+	if e != nil {
+		return fmt.Errorf("creating public DID: %w", e)
 	}
 
 	router := mux.NewRouter()
@@ -809,27 +776,10 @@ func createAriesAgent( // nolint:funlen // contains all aries initialization
 		opts = append(opts, aries.WithKeyAgreementType(kms.NISTP256ECDHKWType))
 	}
 
-	if !parameters.didCommParameters.useDIDCommV1 {
-		opts = append(opts,
-			aries.WithMediaTypeProfiles([]string{
-				transport.MediaTypeDIDCommV2Profile,
-				transport.MediaTypeAIP2RFC0019Profile,
-			}),
-			aries.WithPacker(
-				func(provider packer.Provider) (packer.Packer, error) {
-					return authcrypt.New(provider, jose.A256CBCHS512)
-				},
-				func(provider packer.Provider) (packer.Packer, error) {
-					return authcrypt.New(provider, jose.A256CBCHS512)
-				},
-				func(provider packer.Provider) (packer.Packer, error) {
-					return anoncrypt.New(provider, jose.A256GCM)
-				},
-				func(provider packer.Provider) (packer.Packer, error) {
-					return legacyauthcrypt.New(provider), nil
-				},
-			))
-	}
+	opts = append(opts, aries.WithMediaTypeProfiles([]string{
+		transport.MediaTypeAIP2RFC0587Profile,
+		transport.MediaTypeDIDCommV2Profile,
+	}))
 
 	framework, err := aries.New(opts...)
 	if err != nil {

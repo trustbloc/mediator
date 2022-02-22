@@ -14,6 +14,8 @@ PWD=`pwd`
 TAGS="${TAGS:all}"
 cd test/bdd
 
+rm -Rf ./docker-compose.log
+
 totalAgents=${SYSTEM_TOTALJOBSINPHASE:-0}   # standard VSTS variables available using parallel execution; total number of parallel jobs running
 agentNumber=${SYSTEM_JOBPOSITIONINPHASE:-0} # current job position
 testCount=${#tests[@]}
@@ -38,7 +40,7 @@ else
   fi
 fi
 
-# run didcomm v2 separately, with overridden key types
-HUB_ROUTER_DIDCOMM_V1=false AGENT_KEY_TYPE=ecdsap256ieee1363 AGENT_KEY_AGREEMENT_TYPE=p256kw go test -count=1 -v -cover . -p 1 -timeout=30m -run didcomm_v2
+# run didcomm v2 separately, with fresh wallet and router for new registration
+go test -count=1 -v -cover . -p 1 -timeout=30m -run didcomm_v2
 
 cd $PWD

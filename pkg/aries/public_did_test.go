@@ -196,6 +196,74 @@ func TestPublicDIDGetter_createVerification(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "creating jwk")
 	})
+
+	t.Run("success: dummy ed25519 key", func(t *testing.T) {
+		ctx := ariesMockProvider()
+
+		ctx.KMSValue = &mockkms.KeyManager{CrAndExportPubKeyValue: []byte("foo bar baz")}
+		ctx.KeyTypeValue = kms.ED25519Type
+
+		pdg, err := newPublicDIDGetter(ctx, nil, nil, "t1")
+		require.NoError(t, err)
+
+		_, err = pdg.createVerification("foo", kms.ED25519Type, 0)
+		require.NoError(t, err)
+	})
+}
+
+func TestCreateVerification(t *testing.T) {
+	t.Run("fail: creating pub key", func(t *testing.T) {
+		_, err := CreateVerification(&mockkms.KeyManager{CrAndExportPubKeyErr: fmt.Errorf("uh oh")},
+			"#key-1", kms.ECDSAP256IEEEP1363, did.Authentication)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "creating public key")
+	})
+
+	t.Run("success: Ed25519 key", func(t *testing.T) {
+		ctx := ariesMockProvider()
+		ctx = addRealKMS(t, ctx)
+
+		vm, err := CreateVerification(ctx.KMS(), "#key-1", kms.ED25519Type, did.Authentication)
+		require.NoError(t, err)
+		require.Equal(t, "#key-1", vm.VerificationMethod.ID)
+		require.Equal(t, "Ed25519VerificationKey2018", vm.VerificationMethod.Type)
+	})
+
+	t.Run("success: X25519 key", func(t *testing.T) {
+		ctx := ariesMockProvider()
+		ctx = addRealKMS(t, ctx)
+
+		vm, err := CreateVerification(ctx.KMS(), "#key-1", kms.X25519ECDHKWType, did.Authentication)
+		require.NoError(t, err)
+		require.Equal(t, "#key-1", vm.VerificationMethod.ID)
+		require.Equal(t, "X25519KeyAgreementKey2019", vm.VerificationMethod.Type)
+	})
+
+	t.Run("fail: creating VM from bad data for X25519 key", func(t *testing.T) {
+		_, err := CreateVerification(&mockkms.KeyManager{CrAndExportPubKeyValue: []byte("uh oh")},
+			"#key-1", kms.X25519ECDHKWType, did.Authentication)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unmarshal X25519 key")
+	})
+
+	t.Run("success: ECDSA P256 key", func(t *testing.T) {
+		ctx := ariesMockProvider()
+		ctx = addRealKMS(t, ctx)
+
+		vm, err := CreateVerification(ctx.KMS(), "#key-1", kms.ECDSAP256IEEEP1363, did.Authentication)
+		require.NoError(t, err)
+		require.Equal(t, "#key-1", vm.VerificationMethod.ID)
+
+		jwk := vm.VerificationMethod.JSONWebKey()
+		require.Equal(t, "P-256", jwk.Crv)
+	})
+
+	t.Run("fail: creating JWK from bad data for ECDSA P256 key", func(t *testing.T) {
+		_, err := CreateVerification(&mockkms.KeyManager{CrAndExportPubKeyValue: []byte("uh oh")},
+			"#key-1", kms.ECDSAP256IEEEP1363, did.Authentication)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "creating jwk")
+	})
 }
 
 func addRealKMS(t *testing.T, ctx *mockprovider.Provider) *mockprovider.Provider {

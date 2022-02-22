@@ -25,6 +25,8 @@ services:
       - TLS_KEY_FILE=/etc/tls/ec-key.pem
       - ARIESD_KEY_TYPE=${AGENT_KEY_TYPE}
       - ARIESD_KEY_AGREEMENT_TYPE=${AGENT_KEY_AGREEMENT_TYPE}
+      - ARIESD_MEDIA_TYPE_PROFILES=${AGENT_MEDIA_TYPE_PROFILES}
+      - ARIESD_LOG_LEVEL=DEBUG
     ports:
       - ${WALLET_AGENT_API_PORT}:${WALLET_AGENT_API_PORT}
     entrypoint: ""
@@ -65,6 +67,8 @@ services:
       - TLS_KEY_FILE=/etc/tls/ec-key.pem
       - ARIESD_KEY_TYPE=${AGENT_KEY_TYPE}
       - ARIESD_KEY_AGREEMENT_TYPE=${AGENT_KEY_AGREEMENT_TYPE}
+      - ARIESD_MEDIA_TYPE_PROFILES=${AGENT_MEDIA_TYPE_PROFILES}
+      - ARIESD_LOG_LEVEL=DEBUG
     volumes:
       - ../keys/tls:/etc/tls
     ports:

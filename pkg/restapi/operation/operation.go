@@ -85,6 +85,8 @@ type Operation struct {
 	keyManager   kms.KeyManager
 	endpoint     string
 	publicDID    string
+	keyType      kms.KeyType
+	keyAgrType   kms.KeyType
 }
 
 // New returns a new Operation.
@@ -123,6 +125,8 @@ func New(config *Config) (*Operation, error) {
 		endpoint:     config.Aries.RouterEndpoint(),
 		keyManager:   config.Aries.KMS(),
 		publicDID:    config.PublicDID,
+		keyType:      config.Aries.KeyType(),
+		keyAgrType:   config.Aries.KeyAgreementType(),
 	}
 
 	msgCh := make(chan service.DIDCommMsg, 1)
@@ -184,7 +188,11 @@ func (o *Operation) generateInvitationV2(rw http.ResponseWriter, _ *http.Request
 	invitation, err := o.oobv2.CreateInvitation(
 		outofbandv2.WithFrom(o.publicDID),
 		outofbandv2.WithLabel("hub-router"),
-		outofbandv2.WithAccept(transport.MediaTypeDIDCommV2Profile, transport.MediaTypeAIP2RFC0019Profile),
+		outofbandv2.WithAccept(
+			transport.MediaTypeDIDCommV2Profile,
+			// transport.MediaTypeAIP2RFC0019Profile,
+			transport.MediaTypeAIP2RFC0587Profile,
+		),
 	)
 	if err != nil {
 		httputil.WriteErrorResponseWithLog(rw, http.StatusInternalServerError,
@@ -259,7 +267,7 @@ func (o *Operation) didCommMsgListener(ch <-chan service.DIDCommMsg) {
 	}
 }
 
-func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDCommMsgMap, error) {
+func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDCommMsgMap, error) { // nolint:funlen,lll,gocyclo // ignore
 	pMsg := CreateConnReq{}
 
 	err := msg.Decode(&pMsg)
@@ -283,18 +291,40 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 		return nil, fmt.Errorf("kms failed to create key: %w", err)
 	}
 
+	auth, err := aries.CreateVerification(o.keyManager, "#key-2", o.keyType, did.Authentication)
+	if err != nil {
+		return nil, fmt.Errorf("creating authentication VM: %w", err)
+	}
+
+	kagr, err := aries.CreateVerification(o.keyManager, "#key-3", o.keyAgrType, did.KeyAgreement)
+	if err != nil {
+		return nil, fmt.Errorf("creating keyagreement VM: %w", err)
+	}
+
 	// create peer DID
 	docResolution, err := o.vdriRegistry.Create(
 		peer.DIDMethod,
 		&did.Doc{
-			Service: []did.Service{{ServiceEndpoint: o.endpoint}},
+			Service: []did.Service{
+				{
+					Type:            vdrapi.DIDCommServiceType,
+					ServiceEndpoint: o.endpoint,
+				},
+				{
+					Type:            vdrapi.DIDCommV2ServiceType,
+					ServiceEndpoint: o.endpoint,
+				},
+			},
 			VerificationMethod: []did.VerificationMethod{*did.NewVerificationMethodFromBytes(
 				"#"+keyID,
 				"Ed25519VerificationKey2018",
 				"",
 				pubKeyBytes,
 			)},
+			Authentication: []did.Verification{*auth},
+			KeyAgreement:   []did.Verification{*kagr},
 		},
+		vdrapi.WithOption(peer.DefaultServiceType, vdrapi.DIDCommServiceType),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create new peer did : %w", err)
