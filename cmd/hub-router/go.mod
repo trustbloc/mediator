@@ -9,7 +9,7 @@ go 1.15
 require (
 	github.com/cenkalti/backoff/v4 v4.1.2
 	github.com/gorilla/mux v1.8.0
-	github.com/hyperledger/aries-framework-go v0.1.8-0.20220209203615-cbec86033851
+	github.com/hyperledger/aries-framework-go v0.1.8-0.20220301162051-48a2671187e4
 	github.com/hyperledger/aries-framework-go-ext/component/storage/mongodb v0.0.0-20211219215001-23cd75276fdc
 	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20220126164804-6041c17d6e59
 	github.com/hyperledger/aries-framework-go/spi v0.0.0-20220126164804-6041c17d6e59
