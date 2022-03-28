@@ -11,8 +11,8 @@ require (
 	github.com/cucumber/godog v0.9.0
 	github.com/fsouza/go-dockerclient v1.6.6
 	github.com/google/uuid v1.3.0
-	github.com/hyperledger/aries-framework-go v0.1.8-0.20220324201531-18c87667df19
-	github.com/hyperledger/aries-framework-go/test/bdd v0.0.0-20220324201531-18c87667df19
+	github.com/hyperledger/aries-framework-go v0.1.8-0.20220326012408-071ce8fc905c
+	github.com/hyperledger/aries-framework-go/test/bdd v0.0.0-20220326012408-071ce8fc905c
 	github.com/trustbloc/edge-core v0.1.8-0.20220324215259-0ab3fd8db3f3
 	github.com/trustbloc/hub-router v0.0.0-00010101000000-000000000000
 )
@@ -49,8 +49,8 @@ require (
 	github.com/google/trillian v1.3.14-0.20210520152752-ceda464a95a3 // indirect
 	github.com/hyperledger/aries-framework-go-ext/component/vdr/orb v0.1.4-0.20220314131033-2c80f2db01c9 // indirect
 	github.com/hyperledger/aries-framework-go-ext/component/vdr/sidetree v0.0.0-20220303174620-e3a8602acbee // indirect
-	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20220324201531-18c87667df19 // indirect
-	github.com/hyperledger/aries-framework-go/spi v0.0.0-20220324201531-18c87667df19 // indirect
+	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20220326012408-071ce8fc905c // indirect
+	github.com/hyperledger/aries-framework-go/spi v0.0.0-20220326012408-071ce8fc905c // indirect
 	github.com/ipfs/go-cid v0.0.7 // indirect
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a // indirect
 	github.com/kawamuray/jsonpath v0.0.0-20201211160320-7483bafabd7e // indirect
