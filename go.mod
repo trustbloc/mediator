@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-module github.com/trustbloc/hub-router
+module github.com/trustbloc/mediator
 
 go 1.16
 

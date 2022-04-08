@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-module github.com/trustbloc/hub-router/test/mock/cmd/webhook
+module github.com/trustbloc/mediator/test/mock/cmd/webhook
 
 go 1.15
 

@@ -5,11 +5,11 @@
 #
 
 @all
-@hub_router
+@mediator
 Feature: Hub Router Integration
 
   Scenario: Establish Connection between Adapter and Router through Wallet
-    When Wallet gets DIDComm invitation from hub-router
+    When Wallet gets DIDComm invitation from mediator
     Then Wallet connects with Router
     And  Wallet registers with the Router for mediation
     Then Wallet gets invitation from Adapter

@@ -4,7 +4,7 @@
 
 # Namespace for the docker images
 DOCKER_OUTPUT_NS   ?= ghcr.io
-DOCKER_IMAGE_NAME ?= trustbloc/hub-router
+DOCKER_IMAGE_NAME ?= trustbloc/mediator
 MOCK_WEBHOOK_IMAGE_NAME ?= trustbloc/mock-webhook
 
 # Tool commands (overridable)
@@ -30,30 +30,30 @@ unit-test:
 	@scripts/check_unit.sh
 
 .PHONY: bdd-test
-bdd-test: clean test-keys hub-router-docker mock-webhook-docker
+bdd-test: clean test-keys mediator-docker mock-webhook-docker
 	@scripts/check_integration.sh
 
 .PHONY: test-keys
 test-keys: clean
 	@mkdir -p -p test/bdd/fixtures/keys/tls
 	@docker run -i --rm \
-		-v $(abspath .):/opt/workspace/hub-router \
-		--entrypoint "/opt/workspace/hub-router/scripts/generate_test_keys.sh" \
+		-v $(abspath .):/opt/workspace/mediator \
+		--entrypoint "/opt/workspace/mediator/scripts/generate_test_keys.sh" \
 		frapsoft/openssl
 
-.PHONY: hub-router-docker
-hub-router-docker:
-	@echo "Building hub-router docker image"
-	@docker build -f ./images/hub-router/Dockerfile --no-cache \
+.PHONY: mediator-docker
+mediator-docker:
+	@echo "Building mediator docker image"
+	@docker build -f ./images/mediator/Dockerfile --no-cache \
 	   -t $(DOCKER_OUTPUT_NS)/$(DOCKER_IMAGE_NAME):latest \
 	   --build-arg ALPINE_VER=$(ALPINE_VER) \
 	   --build-arg GO_VER=$(GO_VER) .
 
-.PHONY: hub-router
-hub-router:
-	@echo "Building hub-router"
+.PHONY: mediator
+mediator:
+	@echo "Building mediator"
 	@mkdir -p ./.build/bin
-	@cd cmd/hub-router && go build -o ../../.build/bin/hub-router main.go
+	@cd cmd/mediator && go build -o ../../.build/bin/mediator main.go
 
 .PHONY: mock-webhook
 mock-webhook:

@@ -17,10 +17,10 @@ import (
 
 	"github.com/cucumber/godog"
 
-	"github.com/trustbloc/hub-router/test/bdd/dockerutil"
-	bddctx "github.com/trustbloc/hub-router/test/bdd/pkg/context"
-	"github.com/trustbloc/hub-router/test/bdd/pkg/healthcheck"
-	"github.com/trustbloc/hub-router/test/bdd/pkg/router"
+	"github.com/trustbloc/mediator/test/bdd/dockerutil"
+	bddctx "github.com/trustbloc/mediator/test/bdd/pkg/context"
+	"github.com/trustbloc/mediator/test/bdd/pkg/healthcheck"
+	"github.com/trustbloc/mediator/test/bdd/pkg/router"
 )
 
 func TestMain(m *testing.M) {
@@ -54,7 +54,7 @@ func TestMain(m *testing.M) {
 func runBDDTests(tags, format string) int { // nolint:gocognit // done this way across all our projects
 	return godog.RunWithOptions("godogs", func(s *godog.Suite) {
 		var composition []*dockerutil.Composition
-		var composeFiles = []string{"./fixtures/hub-router", "./fixtures/integration"}
+		var composeFiles = []string{"./fixtures/mediator", "./fixtures/integration"}
 		s.BeforeSuite(func() {
 			if os.Getenv("DISABLE_COMPOSITION") != "true" {
 				// Need a unique name, but docker does not allow '-' in names

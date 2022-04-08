@@ -28,9 +28,9 @@ import (
 	"github.com/hyperledger/aries-framework-go/spi/storage"
 	"github.com/trustbloc/edge-core/pkg/log"
 
-	"github.com/trustbloc/hub-router/pkg/aries"
-	"github.com/trustbloc/hub-router/pkg/internal/common/support"
-	"github.com/trustbloc/hub-router/pkg/restapi/internal/httputil"
+	"github.com/trustbloc/mediator/pkg/aries"
+	"github.com/trustbloc/mediator/pkg/internal/common/support"
+	"github.com/trustbloc/mediator/pkg/restapi/internal/httputil"
 )
 
 // API endpoints.
@@ -49,7 +49,7 @@ const (
 	didExStateComp    = msgTypeBaseURI + "/didexchange/1.0/state-complete"
 )
 
-var logger = log.New("hub-router/operations")
+var logger = log.New("mediator/operations")
 
 // Handler http handler for each controller API endpoint.
 type Handler interface {
@@ -73,7 +73,7 @@ type Config struct {
 	PublicDID      string
 }
 
-// Operation implements hub-router operations.
+// Operation implements mediator operations.
 type Operation struct {
 	storage      *Storage
 	oob          aries.OutOfBand
@@ -169,8 +169,8 @@ func (o *Operation) healthCheckHandler(rw http.ResponseWriter, _ *http.Request) 
 }
 
 func (o *Operation) generateInvitation(rw http.ResponseWriter, _ *http.Request) {
-	// TODO configure hub-router label
-	invitation, err := o.oob.CreateInvitation(nil, outofband.WithLabel("hub-router"))
+	// TODO configure mediator label
+	invitation, err := o.oob.CreateInvitation(nil, outofband.WithLabel("mediator"))
 	if err != nil {
 		httputil.WriteErrorResponseWithLog(rw, http.StatusInternalServerError,
 			fmt.Sprintf("failed to create router invitation - err=%s", err.Error()), invitationPath, logger)
@@ -184,10 +184,10 @@ func (o *Operation) generateInvitation(rw http.ResponseWriter, _ *http.Request) 
 }
 
 func (o *Operation) generateInvitationV2(rw http.ResponseWriter, _ *http.Request) {
-	// TODO configure hub-router label
+	// TODO configure mediator label
 	invitation, err := o.oobv2.CreateInvitation(
 		outofbandv2.WithFrom(o.publicDID),
-		outofbandv2.WithLabel("hub-router"),
+		outofbandv2.WithLabel("mediator"),
 		outofbandv2.WithAccept(
 			transport.MediaTypeDIDCommV2Profile,
 			// transport.MediaTypeAIP2RFC0019Profile,

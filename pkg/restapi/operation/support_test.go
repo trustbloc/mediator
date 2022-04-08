@@ -27,9 +27,9 @@ import (
 	mockvdri "github.com/hyperledger/aries-framework-go/pkg/mock/vdr"
 	"golang.org/x/crypto/curve25519"
 
-	"github.com/trustbloc/hub-router/pkg/aries"
-	mockoutofband "github.com/trustbloc/hub-router/pkg/internal/mock/outofband"
-	mockoutofbandv2 "github.com/trustbloc/hub-router/pkg/internal/mock/outofbandv2"
+	"github.com/trustbloc/mediator/pkg/aries"
+	mockoutofband "github.com/trustbloc/mediator/pkg/internal/mock/outofband"
+	mockoutofbandv2 "github.com/trustbloc/mediator/pkg/internal/mock/outofbandv2"
 )
 
 func getAriesCtx() aries.Ctx {

@@ -31,10 +31,10 @@ import (
 	mockvdri "github.com/hyperledger/aries-framework-go/pkg/mock/vdr"
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/hub-router/pkg/internal/mock/didexchange"
-	"github.com/trustbloc/hub-router/pkg/internal/mock/messenger"
-	mockoutofband "github.com/trustbloc/hub-router/pkg/internal/mock/outofband"
-	mockoutofbandv2 "github.com/trustbloc/hub-router/pkg/internal/mock/outofbandv2"
+	"github.com/trustbloc/mediator/pkg/internal/mock/didexchange"
+	"github.com/trustbloc/mediator/pkg/internal/mock/messenger"
+	mockoutofband "github.com/trustbloc/mediator/pkg/internal/mock/outofband"
+	mockoutofbandv2 "github.com/trustbloc/mediator/pkg/internal/mock/outofbandv2"
 )
 
 func TestNew(t *testing.T) {
@@ -131,7 +131,7 @@ func TestGenerateInvitationHandler(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NotEmpty(t, result.Invitation.ID)
-		require.Equal(t, result.Invitation.Label, "hub-router")
+		require.Equal(t, result.Invitation.Label, "mediator")
 		require.Equal(t, result.Invitation.Type, "https://didcomm.org/out-of-band/1.0/invitation")
 	})
 
@@ -171,7 +171,7 @@ func TestGenerateInvitationV2Handler(t *testing.T) {
 		require.NoError(t, err)
 
 		require.NotEmpty(t, result.Invitation.ID)
-		require.Equal(t, result.Invitation.Label, "hub-router")
+		require.Equal(t, result.Invitation.Label, "mediator")
 		require.Equal(t, result.Invitation.Type, "https://didcomm.org/out-of-band/2.0/invitation")
 	})
 

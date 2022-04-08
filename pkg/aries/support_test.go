@@ -21,8 +21,8 @@ import (
 	mockstore "github.com/hyperledger/aries-framework-go/pkg/mock/storage"
 	mockvdr "github.com/hyperledger/aries-framework-go/pkg/mock/vdr"
 
-	mockoutofband "github.com/trustbloc/hub-router/pkg/internal/mock/outofband"
-	mockoutofbandv2 "github.com/trustbloc/hub-router/pkg/internal/mock/outofbandv2"
+	mockoutofband "github.com/trustbloc/mediator/pkg/internal/mock/outofband"
+	mockoutofbandv2 "github.com/trustbloc/mediator/pkg/internal/mock/outofbandv2"
 )
 
 func ariesMockProvider() *mockprovider.Provider {

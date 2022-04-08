@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-module github.com/trustbloc/hub-router/test/bdd
+module github.com/trustbloc/mediator/test/bdd
 
 go 1.17
 
@@ -14,7 +14,7 @@ require (
 	github.com/hyperledger/aries-framework-go v0.1.8
 	github.com/hyperledger/aries-framework-go/test/bdd v0.0.0-20220330133350-1c2d9d65aea4
 	github.com/trustbloc/edge-core v0.1.8
-	github.com/trustbloc/hub-router v0.0.0-00010101000000-000000000000
+	github.com/trustbloc/mediator v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -108,6 +108,6 @@ require (
 )
 
 replace (
-	github.com/trustbloc/hub-router => ../..
+	github.com/trustbloc/mediator => ../..
 	golang.org/x/sys => golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
 )

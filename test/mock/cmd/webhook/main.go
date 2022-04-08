@@ -16,7 +16,7 @@ import (
 	"github.com/trustbloc/edge-core/pkg/log"
 )
 
-var logger = log.New("hub-router/webhook")
+var logger = log.New("mediator/webhook")
 
 const (
 	addressPattern  = ":%s"

@@ -1,0 +1,73 @@
+#
+# Copyright SecureKey Technologies Inc. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+version: '2'
+
+services:
+
+  mediator.example.com:
+    container_name: mediator.example.com
+    image: ${MEDIATOR_IMAGE}:latest
+    environment:
+      - MEDIATOR_HOST_URL=0.0.0.0:${MEDIATOR_PORT}
+      - MEDIATOR_TLS_CACERTS=/etc/tls/ec-cacert.pem
+      - MEDIATOR_TLS_SYSTEMCERTPOOL=true
+      - MEDIATOR_TLS_SERVE_CERT=/etc/tls/ec-pubCert.pem
+      - MEDIATOR_TLS_SERVE_KEY=/etc/tls/ec-key.pem
+      - MEDIATOR_DIDCOMM_HTTP_HOST=0.0.0.0:${MEDIATOR_DIDCOMM_HTTP_PORT}
+      - MEDIATOR_DIDCOMM_HTTP_HOST_EXTERNAL=https://mediator.example.com:${MEDIATOR_DIDCOMM_HTTP_PORT}
+      - MEDIATOR_DIDCOMM_WS_HOST=0.0.0.0:${MEDIATOR_DIDCOMM_WS_PORT}
+      - MEDIATOR_DIDCOMM_WS_HOST_EXTERNAL=wss://mediator.example.com:${MEDIATOR_DIDCOMM_WS_PORT}
+      - MEDIATOR_DSN_PERSISTENT=mongodb://mongodb.example.com:27017
+      - MEDIATOR_DSN_TRANSIENT=mongodb://mongodb.example.com:27017
+      - MEDIATOR_DSN_TIMEOUT=45
+      - MEDIATOR_LOGLEVEL=DEBUG
+      - MEDIATOR_ORB_DOMAINS=testnet.orb.local
+      - MEDIATOR_KEY_TYPE=${AGENT_KEY_TYPE}
+      - MEDIATOR_KEY_AGREEMENT_TYPE=${AGENT_KEY_AGREEMENT_TYPE}
+      - MEDIATOR_HTTP_RESOLVER=orb@https://testnet.orb.local/sidetree/v1/identifiers
+    ports:
+      - ${MEDIATOR_PORT}:${MEDIATOR_PORT}
+      - ${MEDIATOR_DIDCOMM_HTTP_PORT}:${MEDIATOR_DIDCOMM_HTTP_PORT}
+      - ${MEDIATOR_DIDCOMM_WS_PORT}:${MEDIATOR_DIDCOMM_WS_PORT}
+    entrypoint: ""
+    command: /bin/sh -c "mediator start"
+    volumes:
+      - ../keys/tls:/etc/tls
+    depends_on:
+      - mongodb.example.com
+    networks:
+      - bdd_test
+
+  mongodb.example.com:
+    container_name: mongodb.example.com
+    image: mongo:4.0.0
+    ports:
+      - "27017:27017"
+    networks:
+      - bdd_test
+
+  router.bdd.sidetree.mock:
+    container_name: testnet.orb.local
+    image: ${SIDETREE_MOCK_FIXTURE_IMAGE}:${SIDETREE_MOCK_FIXTURE_IMAGE_TAG}
+    environment:
+      - SIDETREE_MOCK_HOST=0.0.0.0
+      - SIDETREE_MOCK_PORT=443
+      - SIDETREE_MOCK_DID_NAMESPACE=did:orb
+      - SIDETREE_MOCK_DID_ALIASES=did:orb:testnet.orb.local
+      - SIDETREE_MOCK_EXTERNAL_ENDPOINT=https://testnet.orb.local
+      - SIDETREE_MOCK_WELLKNOWN_PATH=did-orb
+      - SIDETREE_MOCK_TLS_CERTIFICATE=/etc/sidetree/tls/ec-pubCert.pem
+      - SIDETREE_MOCK_TLS_KEY=/etc/sidetree/tls/ec-key.pem
+    ports:
+      - 9443:443
+    volumes:
+      - ../keys/tls:/etc/sidetree/tls
+    networks:
+      - bdd_test
+
+networks:
+  bdd_test:
+    driver: bridge

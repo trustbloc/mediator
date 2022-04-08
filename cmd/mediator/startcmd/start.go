@@ -38,27 +38,27 @@ import (
 	cmdutils "github.com/trustbloc/edge-core/pkg/utils/cmd"
 	tlsutils "github.com/trustbloc/edge-core/pkg/utils/tls"
 
-	hubaries "github.com/trustbloc/hub-router/pkg/aries"
-	"github.com/trustbloc/hub-router/pkg/restapi/operation"
+	hubaries "github.com/trustbloc/mediator/pkg/aries"
+	"github.com/trustbloc/mediator/pkg/restapi/operation"
 )
 
 // Network config.
 const (
 	hostURLFlagName      = "host-url"
 	hostURLFlagShorthand = "u"
-	hostURLFlagUsage     = "URL to run the hub-router instance on. Format: HostName:Port." +
+	hostURLFlagUsage     = "URL to run the mediator instance on. Format: HostName:Port." +
 		" Alternatively, this can be set with the following environment variable: " + hostURLEnvKey
-	hostURLEnvKey = "HUB_ROUTER_HOST_URL"
+	hostURLEnvKey = "MEDIATOR_HOST_URL"
 
 	// didcomm http host internal url.
 	didCommHTTPHostFlagName  = "didcomm-http-host"
-	didCommHTTPHostEnvKey    = "HUB_ROUTER_DIDCOMM_HTTP_HOST"
+	didCommHTTPHostEnvKey    = "MEDIATOR_DIDCOMM_HTTP_HOST"
 	didCommHTTPHostFlagUsage = "DIDComm HTTP Host Name:Port. This is used internally to start the didcomm server." +
 		" Alternatively, this can be set with the following environment variable: " + didCommHTTPHostEnvKey
 
 	// didcomm http host external url.
 	didCommHTTPHostExternalFlagName  = "didcomm-http-host-external"
-	didCommHTTPHostExternalEnvKey    = "HUB_ROUTER_DIDCOMM_HTTP_HOST_EXTERNAL"
+	didCommHTTPHostExternalEnvKey    = "MEDIATOR_DIDCOMM_HTTP_HOST_EXTERNAL"
 	didCommHTTPHostExternalFlagUsage = "DIDComm HTTP External Name." +
 		" This is the URL for the inbound server as seen externally." +
 		" If not provided, then the internal inbound host will be used here." +
@@ -66,13 +66,13 @@ const (
 
 	// didcomm websocket host internal url.
 	didCommWSHostFlagName  = "didcomm-ws-host"
-	didCommWSHostEnvKey    = "HUB_ROUTER_DIDCOMM_WS_HOST"
+	didCommWSHostEnvKey    = "MEDIATOR_DIDCOMM_WS_HOST"
 	didCommWSHostFlagUsage = "DIDComm WebSocket Host Name:Port. This is used internally to start the didcomm server." +
 		" Alternatively, this can be set with the following environment variable: " + didCommWSHostEnvKey
 
 	// didcomm websocket host external url.
 	didCommWSHostExternalFlagName  = "didcomm-ws-host-external"
-	didCommWSHostExternalEnvKey    = "HUB_ROUTER_DIDCOMM_WS_HOST_EXTERNAL"
+	didCommWSHostExternalEnvKey    = "MEDIATOR_DIDCOMM_WS_HOST_EXTERNAL"
 	didCommWSHostExternalFlagUsage = "DIDComm WebSocket External Name." +
 		" This is the URL for the inbound server as seen externally." +
 		" If not provided, then the internal inbound host will be used here." +
@@ -82,29 +82,29 @@ const (
 	tlsSystemCertPoolFlagUsage = "Use system certificate pool." +
 		" Possible values [true] [false]. Defaults to false if not set." +
 		" Alternatively, this can be set with the following environment variable: " + tlsSystemCertPoolEnvKey
-	tlsSystemCertPoolEnvKey = "HUB_ROUTER_TLS_SYSTEMCERTPOOL"
+	tlsSystemCertPoolEnvKey = "MEDIATOR_TLS_SYSTEMCERTPOOL"
 
 	tlsCACertsFlagName  = "tls-cacerts"
 	tlsCACertsFlagUsage = "Comma-Separated list of ca certs path." +
 		" Alternatively, this can be set with the following environment variable: " + tlsCACertsEnvKey
-	tlsCACertsEnvKey = "HUB_ROUTER_TLS_CACERTS"
+	tlsCACertsEnvKey = "MEDIATOR_TLS_CACERTS"
 
 	tlsServeCertPathFlagName  = "tls-serve-cert"
 	tlsServeCertPathFlagUsage = "Path to the server certificate to use when serving HTTPS." +
 		" Alternatively, this can be set with the following environment variable: " + tlsServeCertPathEnvKey
-	tlsServeCertPathEnvKey = "HUB_ROUTER_TLS_SERVE_CERT"
+	tlsServeCertPathEnvKey = "MEDIATOR_TLS_SERVE_CERT"
 
 	tlsServeKeyPathFlagName  = "tls-serve-key"
 	tlsServeKeyPathFlagUsage = "Path to the private key to use when serving HTTPS." +
 		" Alternatively, this can be set with the following environment variable: " + tlsServeKeyPathFlagEnvKey
-	tlsServeKeyPathFlagEnvKey = "HUB_ROUTER_TLS_SERVE_KEY"
+	tlsServeKeyPathFlagEnvKey = "MEDIATOR_TLS_SERVE_KEY"
 )
 
 // DIDComm config.
 const (
 	// default verification key type flag.
 	keyTypeFlagName = "key-type"
-	keyTypeEnvKey   = "HUB_ROUTER_KEY_TYPE"
+	keyTypeEnvKey   = "MEDIATOR_KEY_TYPE"
 	keyTypeUsage    = "Default key type for router." +
 		" This flag sets the verification (and for DIDComm V1 encryption as well) key type used for key creation " +
 		"in the router. Alternatively, this can be set with the following environment variable: " +
@@ -112,7 +112,7 @@ const (
 
 	// default key agreement type flag.
 	keyAgreementTypeFlagName = "key-agreement-type"
-	keyAgreementTypeEnvKey   = "HUB_ROUTER_KEY_AGREEMENT_TYPE"
+	keyAgreementTypeEnvKey   = "MEDIATOR_KEY_AGREEMENT_TYPE"
 	keyAgreementTypeUsage    = "Default key agreement type for router." +
 		" Default encryption (used in DIDComm V2) key type used for key agreement creation in the router." +
 		" Alternatively, this can be set with the following environment variable: " +
@@ -124,16 +124,16 @@ const (
 	orbDomainsFlagName  = "orb-domains"
 	orbDomainsFlagUsage = "Comma-separated list of orb DID domains." +
 		" Alternatively, this can be set with the following environment variable: " + orbDomainsEnvKey
-	orbDomainsEnvKey = "HUB_ROUTER_ORB_DOMAINS"
+	orbDomainsEnvKey = "MEDIATOR_ORB_DOMAINS"
 
 	requestTokensFlagName  = "request-tokens"
-	requestTokensEnvKey    = "HUB_ROUTER_REQUEST_TOKENS" // nolint: gosec,gocritic
+	requestTokensEnvKey    = "MEDIATOR_REQUEST_TOKENS"
 	requestTokensFlagUsage = "Tokens used for http request " +
 		" Alternatively, this can be set with the following environment variable: " + requestTokensEnvKey
 
 	// http resolver url flag.
 	agentHTTPResolverFlagName  = "http-resolver-url"
-	agentHTTPResolverEnvKey    = "HUB_ROUTER_HTTP_RESOLVER"
+	agentHTTPResolverEnvKey    = "MEDIATOR_HTTP_RESOLVER"
 	agentHTTPResolverFlagUsage = "HTTP binding DID resolver method and url. Values should be in `method@url` format." +
 		" This flag can be repeated, allowing multiple http resolvers. Defaults to peer DID resolver if not set." +
 		" Alternatively, this can be set with the following environment variable (in CSV format): " +
@@ -150,7 +150,7 @@ const (
 		" Examples: 'mongodb://mongodb.example.com:27017'." +
 		" Supported drivers are [mem, mongodb]." +
 		" Alternatively, this can be set with the following environment variable: " + datasourcePersistentEnvKey
-	datasourcePersistentEnvKey = "HUB_ROUTER_DSN_PERSISTENT"
+	datasourcePersistentEnvKey = "MEDIATOR_DSN_PERSISTENT"
 
 	datasourceTransientFlagName  = "dsn-t"
 	datasourceTransientFlagUsage = "Datasource Name with credentials if required." +
@@ -158,13 +158,13 @@ const (
 		" Examples: 'mongodb://mongodb.example.com:27017'." +
 		" Supported drivers are [mem, mongodb]." +
 		" Alternatively, this can be set with the following environment variable: " + datasourceTransientEnvKey
-	datasourceTransientEnvKey = "HUB_ROUTER_DSN_TRANSIENT"
+	datasourceTransientEnvKey = "MEDIATOR_DSN_TRANSIENT"
 
 	datasourceTimeoutFlagName  = "dsn-timeout"
 	datasourceTimeoutFlagUsage = "Total time in seconds to wait until the datasource is available before giving up." +
 		" Default: " + string(rune(datasourceTimeoutDefault)) + " seconds." +
 		" Alternatively, this can be set with the following environment variable: " + datasourceTimeoutEnvKey
-	datasourceTimeoutEnvKey  = "HUB_ROUTER_DSN_TIMEOUT"
+	datasourceTimeoutEnvKey  = "MEDIATOR_DSN_TIMEOUT"
 	datasourceTimeoutDefault = 30
 )
 
@@ -174,7 +174,7 @@ const (
 	logLevelFlagUsage = "Sets the logging level." +
 		" Possible values are [DEBUG, INFO, WARNING, ERROR, CRITICAL] (default is INFO)." +
 		" Alternatively, this can be set with the following environment variable: " + logLevelEnvKey
-	logLevelEnvKey = "HUB_ROUTER_LOGLEVEL"
+	logLevelEnvKey = "MEDIATOR_LOGLEVEL"
 )
 
 const (
@@ -189,7 +189,7 @@ const (
 	databaseTypeMongoDBOption = "mongodb"
 )
 
-var logger = log.New("hub-router")
+var logger = log.New("mediator")
 
 // nolint:gochecknoglobals // we map the <driver> portion of datasource URLs to this map's keys
 var supportedStorageProviders = map[string]func(string, string) (storage.Provider, error){
@@ -269,8 +269,8 @@ func GetStartCmd(srv server) *cobra.Command {
 func createStartCmd(srv server) *cobra.Command {
 	return &cobra.Command{
 		Use:   "start",
-		Short: "Start hub-router",
-		Long:  "Start hub-router",
+		Short: "Start mediator",
+		Long:  "Start mediator",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			parameters, err := getHubRouterParameters(cmd)
 			if err != nil {
@@ -616,12 +616,12 @@ func serveHubRouter(params *hubRouterParameters, srv server, router http.Handler
 	handler := cors.Default().Handler(router)
 
 	if params.tlsParams.serveCertPath == "" && params.tlsParams.serveKeyPath == "" {
-		logger.Infof("starting hub-router server on host:%s", params.hostURL)
+		logger.Infof("starting mediator server on host:%s", params.hostURL)
 
 		return srv.ListenAndServe(params.hostURL, handler)
 	}
 
-	logger.Infof("starting hub-router server on tls host %s", params.hostURL)
+	logger.Infof("starting mediator server on tls host %s", params.hostURL)
 
 	return srv.ListenAndServeTLS(
 		params.hostURL,

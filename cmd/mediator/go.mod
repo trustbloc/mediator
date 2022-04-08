@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-module github.com/trustbloc/hub-router/cmd/hub-router
+module github.com/trustbloc/mediator/cmd/mediator
 
 go 1.15
 
@@ -18,7 +18,7 @@ require (
 	github.com/spf13/cobra v1.3.0
 	github.com/stretchr/testify v1.7.0
 	github.com/trustbloc/edge-core v0.1.8
-	github.com/trustbloc/hub-router v0.0.0-00010101000000-000000000000
+	github.com/trustbloc/mediator v0.0.0-00010101000000-000000000000
 )
 
-replace github.com/trustbloc/hub-router => ../..
+replace github.com/trustbloc/mediator => ../..

@@ -13,7 +13,7 @@ import (
 
 	"github.com/cucumber/godog"
 
-	bddctx "github.com/trustbloc/hub-router/test/bdd/pkg/context"
+	bddctx "github.com/trustbloc/mediator/test/bdd/pkg/context"
 )
 
 const (
@@ -35,7 +35,7 @@ func NewSteps(ctx *bddctx.BDDContext) *Steps {
 // RegisterSteps registers the BDD test steps in the bdd test suite.
 func (s *Steps) RegisterSteps(g *godog.Suite) {
 	g.Step(`an HTTP GET is sent to the healthcheck endpoint`, s.requestHealthCheck)
-	g.Step(`hub-router responds with status OK`, s.confirmHealthResult)
+	g.Step(`mediator responds with status OK`, s.confirmHealthResult)
 }
 
 func (s *Steps) requestHealthCheck() error {
