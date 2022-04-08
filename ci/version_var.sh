@@ -9,8 +9,8 @@ BASE_VERSION=0.1.9
 IS_RELEASE=false
 
 # Project Parameters
-SOURCE_REPO=hub-router
-PKG_NAME=hub-router
+SOURCE_REPO=mediator
+PKG_NAME=mediator
 RELEASE_REPO=ghcr.io/trustbloc
 SNAPSHOT_REPO=ghcr.io/trustbloc-cicd
 
@@ -24,5 +24,5 @@ else
   PROJECT_PKG_REPO=${RELEASE_REPO}
 fi
 
-export HUB_ROUTER_TAG=$PROJECT_VERSION
-export HUB_ROUTER_PKG=${PROJECT_PKG_REPO}/${PKG_NAME}
+export MEDIATOR_TAG=$PROJECT_VERSION
+export MEDIATOR_PKG=${PROJECT_PKG_REPO}/${PKG_NAME}

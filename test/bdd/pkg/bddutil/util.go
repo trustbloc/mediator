@@ -19,7 +19,7 @@ import (
 	"github.com/trustbloc/edge-core/pkg/log"
 )
 
-var logger = log.New("hub-router/bddutil")
+var logger = log.New("mediator/bddutil")
 
 // HTTPDo util to send http requests.
 func HTTPDo(method, url, contentType, token string, body io.Reader, tlsConfig *tls.Config) (*http.Response, error) {

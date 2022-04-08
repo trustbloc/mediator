@@ -15,8 +15,8 @@ RUN apk add --no-cache \
 	libtool \
 	bash \
 	make;
-ADD . $GOPATH/src/github.com/trustbloc/hub-router
-WORKDIR $GOPATH/src/github.com/trustbloc/hub-router
+ADD . $GOPATH/src/github.com/trustbloc/mediator
+WORKDIR $GOPATH/src/github.com/trustbloc/mediator
 ENV EXECUTABLES go git
 
 FROM golang as hubr-router
@@ -26,5 +26,5 @@ RUN GO_TAGS=${GO_TAGS} GOPROXY=${GOPROXY} make mock-webhook
 
 
 FROM alpine:${ALPINE_VER} as base
-COPY --from=hubr-router /go/src/github.com/trustbloc/hub-router/build/bin/webhook-server /usr/local/bin
+COPY --from=hubr-router /go/src/github.com/trustbloc/mediator/build/bin/webhook-server /usr/local/bin
 CMD WEBHOOK_PORT=${WEBHOOK_PORT} webhook-server

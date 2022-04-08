@@ -147,8 +147,8 @@ func TestGetStartCmd(t *testing.T) {
 		startCmd := GetStartCmd(&mockServer{})
 
 		require.Equal(t, "start", startCmd.Use)
-		require.Equal(t, "Start hub-router", startCmd.Short)
-		require.Equal(t, "Start hub-router", startCmd.Long)
+		require.Equal(t, "Start mediator", startCmd.Short)
+		require.Equal(t, "Start mediator", startCmd.Long)
 
 		checkFlagPropertiesCorrect(t, startCmd, hostURLFlagName, hostURLFlagShorthand, hostURLFlagUsage)
 	})
@@ -171,7 +171,7 @@ func TestGetStartCmd(t *testing.T) {
 
 		require.Error(t, err)
 		require.Equal(t,
-			"Neither host-url (command line flag) nor HUB_ROUTER_HOST_URL (environment variable) have been set.",
+			"Neither host-url (command line flag) nor MEDIATOR_HOST_URL (environment variable) have been set.",
 			err.Error())
 	})
 
@@ -183,7 +183,7 @@ func TestGetStartCmd(t *testing.T) {
 
 		err = startCmd.Execute()
 		require.Error(t, err)
-		require.Equal(t, "HUB_ROUTER_HOST_URL value is empty", err.Error())
+		require.Equal(t, "MEDIATOR_HOST_URL value is empty", err.Error())
 	})
 
 	t.Run("missing persistent dsn arg", func(t *testing.T) {
@@ -199,7 +199,7 @@ func TestGetStartCmd(t *testing.T) {
 		err := startCmd.Execute()
 		require.Error(t, err)
 		require.Equal(t,
-			"Neither dsn-p (command line flag) nor HUB_ROUTER_DSN_PERSISTENT (environment variable) have been set.", err.Error())
+			"Neither dsn-p (command line flag) nor MEDIATOR_DSN_PERSISTENT (environment variable) have been set.", err.Error())
 	})
 
 	t.Run("missing transient dsn arg", func(t *testing.T) {
@@ -215,7 +215,7 @@ func TestGetStartCmd(t *testing.T) {
 		err := startCmd.Execute()
 		require.Error(t, err)
 		require.Equal(t,
-			"Neither dsn-t (command line flag) nor HUB_ROUTER_DSN_TRANSIENT (environment variable) have been set.", err.Error())
+			"Neither dsn-t (command line flag) nor MEDIATOR_DSN_TRANSIENT (environment variable) have been set.", err.Error())
 	})
 
 	t.Run("unsupported datasource driver", func(t *testing.T) {
@@ -302,7 +302,7 @@ func TestGetStartCmd(t *testing.T) {
 		err := startCmd.Execute()
 		require.Error(t, err)
 		require.Equal(t,
-			"Neither didcomm-http-host (command line flag) nor HUB_ROUTER_DIDCOMM_HTTP_HOST "+
+			"Neither didcomm-http-host (command line flag) nor MEDIATOR_DIDCOMM_HTTP_HOST "+
 				"(environment variable) have been set.",
 			err.Error())
 	})

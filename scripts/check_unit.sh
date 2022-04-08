@@ -24,15 +24,15 @@ if [ -f profile.out ]; then
 fi
 }
 
-# Running hub-router unit tests
-PKGS=`go list github.com/trustbloc/hub-router/... 2> /dev/null | \
+# Running mediator unit tests
+PKGS=`go list github.com/trustbloc/mediator/... 2> /dev/null | \
                                                   grep -v /mocks`
 go test $PKGS -count=1 -race -coverprofile=profile.out -covermode=atomic -timeout=10m
 amend_coverage_file
 
-# Running hub-router/cmd unit tests
-cd cmd/hub-router
-PKGS=`go list github.com/trustbloc/hub-router/cmd/hub-router/... 2> /dev/null | \
+# Running mediator/cmd unit tests
+cd cmd/mediator
+PKGS=`go list github.com/trustbloc/mediator/cmd/mediator/... 2> /dev/null | \
                                                  grep -v /mocks`
 go test $PKGS -count=1 -race -coverprofile=profile.out -covermode=atomic -timeout=10m
 amend_coverage_file

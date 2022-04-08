@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-name: "hub-router ci"
+name: "mediator ci"
 
 env:
   GO_VERSION: 1.17
@@ -86,9 +86,9 @@ jobs:
           source ci/version_var.sh
           echo $DOCKER_PASSWORD | docker login ghcr.io --username $DOCKER_USER --password-stdin
 
-          make hub-router-docker
-          docker tag ghcr.io/trustbloc/hub-router:latest ${HUB_ROUTER_PKG}:${HUB_ROUTER_TAG}
-          docker push ${HUB_ROUTER_PKG}:${HUB_ROUTER_TAG}
+          make mediator-docker
+          docker tag ghcr.io/trustbloc/mediator:latest ${MEDIATOR_PKG}:${MEDIATOR_TAG}
+          docker push ${MEDIATOR_PKG}:${MEDIATOR_TAG}
         env:
           DOCKER_USER: ${{ secrets.CR_USER }}
           DOCKER_PASSWORD: ${{ secrets.CR_PAT }}

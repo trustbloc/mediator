@@ -36,12 +36,12 @@ import (
 	"github.com/hyperledger/aries-framework-go/test/bdd/pkg/util"
 	"github.com/trustbloc/edge-core/pkg/log"
 
-	"github.com/trustbloc/hub-router/pkg/restapi/operation"
-	"github.com/trustbloc/hub-router/test/bdd/pkg/bddutil"
-	"github.com/trustbloc/hub-router/test/bdd/pkg/context"
+	"github.com/trustbloc/mediator/pkg/restapi/operation"
+	"github.com/trustbloc/mediator/test/bdd/pkg/bddutil"
+	"github.com/trustbloc/mediator/test/bdd/pkg/context"
 )
 
-var logger = log.New("hub-router/routersteps")
+var logger = log.New("mediator/routersteps")
 
 const (
 	// base urls.
@@ -96,7 +96,7 @@ func NewSteps(ctx *context.BDDContext) *Steps {
 	return &Steps{
 		bddContext: ctx,
 		serviceEndpoints: map[string]string{
-			hubRouterURL:  "https://hub-router.example.com:10201",
+			hubRouterURL:  "https://mediator.example.com:10201",
 			adapterAPIURL: "https://adapter-mock.example.com:10221",
 		},
 	}
@@ -104,8 +104,8 @@ func NewSteps(ctx *context.BDDContext) *Steps {
 
 // RegisterSteps registers agent steps.
 func (e *Steps) RegisterSteps(s *godog.Suite) {
-	s.Step(`^Wallet gets DIDComm invitation from hub-router$`, e.invitation)
-	s.Step(`^Wallet gets DIDComm V2 invitation from hub-router$`, e.invitationV2)
+	s.Step(`^Wallet gets DIDComm invitation from mediator$`, e.invitation)
+	s.Step(`^Wallet gets DIDComm V2 invitation from mediator$`, e.invitationV2)
 	s.Step(`^Wallet connects with Router$`, e.connectWithRouter)
 	s.Step(`^Wallet connects with Router using DIDComm V2$`, e.connectWithRouterV2)
 	s.Step(`^Wallet registers with the Router for mediation$`, e.mediationRegistration)

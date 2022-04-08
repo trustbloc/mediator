@@ -10,4 +10,4 @@ Feature: Health Check
 
   Scenario: Status OK
     When an HTTP GET is sent to the healthcheck endpoint
-    Then hub-router responds with status OK
+    Then mediator responds with status OK

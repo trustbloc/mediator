@@ -11,12 +11,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/trustbloc/hub-router/cmd/hub-router/startcmd"
+	"github.com/trustbloc/mediator/cmd/mediator/startcmd"
 )
 
 func main() {
 	cmd := &cobra.Command{
-		Use: "hub-router",
+		Use: "mediator",
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.HelpFunc()(cmd, args)
 		},
@@ -25,6 +25,6 @@ func main() {
 	cmd.AddCommand(startcmd.GetStartCmd(&startcmd.HTTPServer{}))
 
 	if err := cmd.Execute(); err != nil {
-		log.Fatalf("failed to run hub-router: %s", err.Error())
+		log.Fatalf("failed to run mediator: %s", err.Error())
 	}
 }
