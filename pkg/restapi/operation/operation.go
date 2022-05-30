@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/client/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/client/outofband"
 	"github.com/hyperledger/aries-framework-go/pkg/client/outofbandv2"
+	"github.com/hyperledger/aries-framework-go/pkg/common/model"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/common/service"
 	"github.com/hyperledger/aries-framework-go/pkg/didcomm/messaging/msghandler"
 	didexdsvc "github.com/hyperledger/aries-framework-go/pkg/didcomm/protocol/didexchange"
@@ -308,11 +309,11 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 			Service: []did.Service{
 				{
 					Type:            vdrapi.DIDCommServiceType,
-					ServiceEndpoint: o.endpoint,
+					ServiceEndpoint: model.NewDIDCommV1Endpoint(o.endpoint),
 				},
 				{
 					Type:            vdrapi.DIDCommV2ServiceType,
-					ServiceEndpoint: o.endpoint,
+					ServiceEndpoint: model.NewDIDCommV2Endpoint([]model.DIDCommV2Endpoint{{URI: o.endpoint}}),
 				},
 			},
 			VerificationMethod: []did.VerificationMethod{*did.NewVerificationMethodFromBytes(

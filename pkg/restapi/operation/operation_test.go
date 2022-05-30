@@ -476,14 +476,14 @@ func TestDIDCommMsgListener(t *testing.T) {
 		msgCh := make(chan service.DIDCommMsg, 1)
 		go c.didCommMsgListener(msgCh)
 
-		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t).JSONBytes()
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t, false).JSONBytes()
 		require.NoError(t, err)
 
 		msgCh <- service.NewDIDCommMsgMap(CreateConnReq{
 			ID:   uuid.New().String(),
 			Type: createConnReq,
 			Data: &CreateConnReqData{
-				DIDDoc: json.RawMessage(didDocBytes),
+				DIDDoc: didDocBytes,
 			},
 		})
 
@@ -534,14 +534,14 @@ func TestCreateConnectionReqHandler(t *testing.T) {
 		c, err := New(config(ctx))
 		require.NoError(t, err)
 
-		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t).JSONBytes()
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t, false).JSONBytes()
 		require.NoError(t, err)
 
 		msg := service.NewDIDCommMsgMap(CreateConnReq{
 			ID:   uuid.New().String(),
 			Type: createConnReq,
 			Data: &CreateConnReqData{
-				DIDDoc: json.RawMessage(didDocBytes),
+				DIDDoc: didDocBytes,
 			},
 		})
 
@@ -558,14 +558,14 @@ func TestCreateConnectionReqHandler(t *testing.T) {
 		c, err := New(config(ctx))
 		require.NoError(t, err)
 
-		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t).JSONBytes()
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t, false).JSONBytes()
 		require.NoError(t, err)
 
 		msg := service.NewDIDCommMsgMap(CreateConnReq{
 			ID:   uuid.New().String(),
 			Type: createConnReq,
 			Data: &CreateConnReqData{
-				DIDDoc: json.RawMessage(didDocBytes),
+				DIDDoc: didDocBytes,
 			},
 		})
 
@@ -582,14 +582,14 @@ func TestCreateConnectionReqHandler(t *testing.T) {
 			CreateErr: errors.New("did create error"),
 		}
 
-		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t).JSONBytes()
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t, false).JSONBytes()
 		require.NoError(t, err)
 
 		msg := service.NewDIDCommMsgMap(CreateConnReq{
 			ID:   uuid.New().String(),
 			Type: createConnReq,
 			Data: &CreateConnReqData{
-				DIDDoc: json.RawMessage(didDocBytes),
+				DIDDoc: didDocBytes,
 			},
 		})
 
@@ -605,14 +605,14 @@ func TestCreateConnectionReqHandler(t *testing.T) {
 			CreateConnErr: errors.New("create error"),
 		}
 
-		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t).JSONBytes()
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t, false).JSONBytes()
 		require.NoError(t, err)
 
 		msg := service.NewDIDCommMsgMap(CreateConnReq{
 			ID:   uuid.New().String(),
 			Type: createConnReq,
 			Data: &CreateConnReqData{
-				DIDDoc: json.RawMessage(didDocBytes),
+				DIDDoc: didDocBytes,
 			},
 		})
 
@@ -629,7 +629,7 @@ func TestCreateConnectionReqHandler(t *testing.T) {
 
 		c.keyManager = &mockkms.KeyManager{CrAndExportPubKeyErr: expected}
 
-		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t).JSONBytes()
+		didDocBytes, err := mockdiddoc.GetMockDIDDoc(t, false).JSONBytes()
 		require.NoError(t, err)
 
 		msg := service.NewDIDCommMsgMap(CreateConnReq{
