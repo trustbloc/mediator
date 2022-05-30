@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hyperledger/aries-framework-go-ext/component/vdr/orb"
+	"github.com/hyperledger/aries-framework-go/pkg/common/model"
 	"github.com/hyperledger/aries-framework-go/pkg/crypto"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/jose/jwk"
@@ -140,7 +141,7 @@ func (g *PublicDIDGetter) docTemplate(didcommEndPoint string) (*did.Doc, error) 
 
 	didDoc.Service = []did.Service{{
 		ID:              uuid.New().String(),
-		ServiceEndpoint: didcommEndPoint,
+		ServiceEndpoint: model.NewDIDCommV2Endpoint([]model.DIDCommV2Endpoint{{URI: didcommEndPoint}}),
 		Type:            "DIDCommMessaging",
 	}}
 
