@@ -779,6 +779,8 @@ func createAriesAgent( // nolint:funlen // contains all aries initialization
 	opts = append(opts, aries.WithMediaTypeProfiles([]string{
 		transport.MediaTypeAIP2RFC0587Profile,
 		transport.MediaTypeDIDCommV2Profile,
+		transport.MediaTypeAIP2RFC0019Profile,
+		transport.MediaTypeProfileDIDCommAIP1,
 	}))
 
 	framework, err := aries.New(opts...)
