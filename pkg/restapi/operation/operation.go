@@ -171,7 +171,10 @@ func (o *Operation) healthCheckHandler(rw http.ResponseWriter, _ *http.Request) 
 
 func (o *Operation) generateInvitation(rw http.ResponseWriter, _ *http.Request) {
 	// TODO configure mediator label
-	invitation, err := o.oob.CreateInvitation(nil, outofband.WithLabel("mediator"))
+	invitation, err := o.oob.CreateInvitation(nil, outofband.WithLabel("mediator"),
+		outofband.WithAccept(
+			transport.MediaTypeAIP2RFC0019Profile,
+			transport.MediaTypeProfileDIDCommAIP1))
 	if err != nil {
 		httputil.WriteErrorResponseWithLog(rw, http.StatusInternalServerError,
 			fmt.Sprintf("failed to create router invitation - err=%s", err.Error()), invitationPath, logger)
@@ -191,7 +194,6 @@ func (o *Operation) generateInvitationV2(rw http.ResponseWriter, _ *http.Request
 		outofbandv2.WithLabel("mediator"),
 		outofbandv2.WithAccept(
 			transport.MediaTypeDIDCommV2Profile,
-			// transport.MediaTypeAIP2RFC0019Profile,
 			transport.MediaTypeAIP2RFC0587Profile,
 		),
 	)
