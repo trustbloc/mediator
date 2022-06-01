@@ -43,11 +43,12 @@ const (
 
 // Msg svc constants.
 const (
-	msgTypeBaseURI    = "https://trustbloc.dev"
-	blindedRoutingURI = msgTypeBaseURI + "/blinded-routing/1.0"
-	createConnReq     = blindedRoutingURI + "/create-conn-req"
-	createConnResp    = blindedRoutingURI + "/create-conn-resp"
-	didExStateComp    = msgTypeBaseURI + "/didexchange/1.0/state-complete"
+	msgTypeBaseURI       = "https://trustbloc.dev"
+	blindedRoutingURI    = msgTypeBaseURI + "/blinded-routing/1.0"
+	createConnReq        = blindedRoutingURI + "/create-conn-req"
+	createConnResp       = blindedRoutingURI + "/create-conn-resp"
+	didExStateComp       = msgTypeBaseURI + "/didexchange/1.0/state-complete"
+	didCommV2ServiceType = "DIDCommMessaging"
 )
 
 var logger = log.New("mediator/operations")
@@ -304,20 +305,18 @@ func (o *Operation) handleCreateConnReq(msg service.DIDCommMsg) (service.DIDComm
 		return nil, fmt.Errorf("creating keyagreement VM: %w", err)
 	}
 
+	svc := did.Service{Type: vdrapi.DIDCommServiceType, ServiceEndpoint: model.NewDIDCommV1Endpoint(o.endpoint)}
+
+	if didDoc.Service[0].Type == didCommV2ServiceType {
+		svc = did.Service{Type: vdrapi.DIDCommV2ServiceType,
+			ServiceEndpoint: model.NewDIDCommV2Endpoint([]model.DIDCommV2Endpoint{{URI: o.endpoint}})}
+	}
+
 	// create peer DID
 	docResolution, err := o.vdriRegistry.Create(
 		peer.DIDMethod,
 		&did.Doc{
-			Service: []did.Service{
-				{
-					Type:            vdrapi.DIDCommServiceType,
-					ServiceEndpoint: model.NewDIDCommV1Endpoint(o.endpoint),
-				},
-				{
-					Type:            vdrapi.DIDCommV2ServiceType,
-					ServiceEndpoint: model.NewDIDCommV2Endpoint([]model.DIDCommV2Endpoint{{URI: o.endpoint}}),
-				},
-			},
+			Service: []did.Service{svc},
 			VerificationMethod: []did.VerificationMethod{*did.NewVerificationMethodFromBytes(
 				"#"+keyID,
 				"Ed25519VerificationKey2018",
