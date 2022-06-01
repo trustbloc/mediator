@@ -23,6 +23,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hyperledger/aries-framework-go/pkg/client/didexchange"
 	"github.com/hyperledger/aries-framework-go/pkg/client/outofband"
+	"github.com/hyperledger/aries-framework-go/pkg/common/model"
 	didexcmd "github.com/hyperledger/aries-framework-go/pkg/controller/command/didexchange"
 	cmdkms "github.com/hyperledger/aries-framework-go/pkg/controller/command/kms"
 	"github.com/hyperledger/aries-framework-go/pkg/controller/command/messaging"
@@ -892,7 +893,7 @@ func (e *Steps) createPublicDID( //nolint:funlen,gocyclo // func is self-contain
 			JWK:             j,
 			RecoveryJWK:     recoveryJWK,
 			UpdateJWK:       updateJWK,
-			ServiceEndpoint: e.serviceEndpoints[agentURL],
+			ServiceEndpoint: model.NewDIDCommV1Endpoint(e.serviceEndpoints[agentURL]),
 		})
 	if err != nil {
 		return "", err

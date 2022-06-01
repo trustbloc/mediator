@@ -12,7 +12,7 @@ require (
 	github.com/fsouza/go-dockerclient v1.6.6
 	github.com/google/uuid v1.3.0
 	github.com/hyperledger/aries-framework-go v0.1.9-0.20220531182402-04bfea80427b
-	github.com/hyperledger/aries-framework-go/test/bdd v0.0.0-20220330133350-1c2d9d65aea4
+	github.com/hyperledger/aries-framework-go/test/bdd v0.0.0-20220531182402-04bfea80427b
 	github.com/trustbloc/edge-core v0.1.8
 	github.com/trustbloc/mediator v0.0.0-00010101000000-000000000000
 )
