@@ -14,6 +14,8 @@ PWD=`pwd`
 TAGS="${TAGS:all}"
 cd test/bdd
 
+export AGENT_MEDIA_TYPE_PROFILES="didcomm/aip1,didcomm/aip2;env=rfc19"
+
 rm -Rf ./docker-compose.log
 
 totalAgents=${SYSTEM_TOTALJOBSINPHASE:-0}   # standard VSTS variables available using parallel execution; total number of parallel jobs running
@@ -41,6 +43,6 @@ else
 fi
 
 # run didcomm v2 separately, with fresh wallet and router for new registration
-go test -count=1 -v -cover . -p 1 -timeout=30m -run didcomm_v2
+AGENT_MEDIA_TYPE_PROFILES="didcomm/aip2;env=rfc587,didcomm/v2" go test -count=1 -v -cover . -p 1 -timeout=30m -run didcomm_v2
 
 cd $PWD
