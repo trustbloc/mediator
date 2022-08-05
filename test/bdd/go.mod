@@ -11,7 +11,7 @@ require (
 	github.com/cucumber/godog v0.9.0
 	github.com/fsouza/go-dockerclient v1.6.6
 	github.com/google/uuid v1.3.0
-	github.com/hyperledger/aries-framework-go v0.1.9-0.20220726210616-c28f931361fe
+	github.com/hyperledger/aries-framework-go v0.1.9-0.20220805202510-1d1ff784e8b8
 	github.com/hyperledger/aries-framework-go/test/bdd v0.0.0-20220531182402-04bfea80427b
 	github.com/trustbloc/edge-core v0.1.8
 	github.com/trustbloc/mediator v0.0.0-00010101000000-000000000000
