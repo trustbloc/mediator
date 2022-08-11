@@ -11,7 +11,7 @@ require (
 	github.com/cucumber/godog v0.9.0
 	github.com/fsouza/go-dockerclient v1.6.6
 	github.com/google/uuid v1.3.0
-	github.com/hyperledger/aries-framework-go v0.1.9-0.20220805202510-1d1ff784e8b8
+	github.com/hyperledger/aries-framework-go v0.1.9-0.20220809201627-6c0753b49bcd
 	github.com/hyperledger/aries-framework-go/test/bdd v0.0.0-20220531182402-04bfea80427b
 	github.com/trustbloc/edge-core v0.1.8
 	github.com/trustbloc/mediator v0.0.0-00010101000000-000000000000
@@ -51,8 +51,8 @@ require (
 	github.com/google/trillian v1.3.14-0.20210520152752-ceda464a95a3 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/hyperledger/aries-framework-go-ext/component/storage/mongodb v0.0.0-20220615170242-cda5092b4faf // indirect
-	github.com/hyperledger/aries-framework-go-ext/component/vdr/orb v1.0.0-rc2.0.20220726145132-1d6231460892 // indirect
-	github.com/hyperledger/aries-framework-go-ext/component/vdr/sidetree v1.0.0-rc2 // indirect
+	github.com/hyperledger/aries-framework-go-ext/component/vdr/orb v1.0.0-rc2.0.20220809132702-f2eea94af7bb // indirect
+	github.com/hyperledger/aries-framework-go-ext/component/vdr/sidetree v1.0.0-rc2.0.20220729203359-da1de2fa21ce // indirect
 	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20220428211718-66cc046674a1 // indirect
 	github.com/hyperledger/aries-framework-go/spi v0.0.0-20220614152730-3d817acfa48b // indirect
 	github.com/ipfs/go-cid v0.0.7 // indirect
@@ -96,8 +96,8 @@ require (
 	github.com/tidwall/match v1.0.3 // indirect
 	github.com/tidwall/pretty v1.0.2 // indirect
 	github.com/tidwall/sjson v1.1.4 // indirect
-	github.com/trustbloc/orb v1.0.0-rc2.0.20220722161937-49dd83f0166a // indirect
-	github.com/trustbloc/sidetree-core-go v1.0.0-rc2.0.20220721143952-577302c8aca8 // indirect
+	github.com/trustbloc/orb v1.0.0-rc2.0.20220729193203-d83f3ce77a0c // indirect
+	github.com/trustbloc/sidetree-core-go v1.0.0-rc2.0.20220729143551-6cda4cea3bf5 // indirect
 	github.com/trustbloc/vct v1.0.0-rc2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
